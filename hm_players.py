@@ -5,21 +5,20 @@ import random
 from typing import Optional
 
 import hm_game_tree
+import hm_game_graph
 import hangman
 
 VALID_CHARACTERS = 'abcdefghijklmnopqrstuvwxyz'
 
 
-def load_word_bank(games_file: str) -> hm_game_tree.GameTree:
-    """Create a word bank (i.e., a game tree) based on games_file."""
-    empty_game_tree = hm_game_tree.GameTree()
-    with open(games_file) as csv_file:
-        reader = csv.reader(csv_file)
+def load_word_bank(games_file: str) -> hm_game_graph.GameGraph:
+    """Create a word bank (i.e., a game graph) based on games_file."""
+    empty_game_graph = hm_game_graph.GameGraph()
+    with open(games_file) as file:
+        for row in file:
+            empty_game_graph.insert_character_sequence(row.strip('\n'))
 
-        for row in reader:
-            empty_game_tree.insert_character_sequence(row)
-
-    return empty_game_tree
+    return empty_game_graph
 
 
 class RandomPlayer(hangman.Player):
@@ -36,6 +35,72 @@ class RandomPlayer(hangman.Player):
             chosen_character = random.choice(VALID_CHARACTERS)
         self._visited_characters.add(chosen_character)
         return chosen_character
+
+
+class GraphNextPlayer(hangman.Player):
+    """A Hangman player that plays based on a given GameGraph.
+
+    This player uses a game graph to make guesses as the game is played.
+    On its turn:
+
+        1. If there are no known characters then it guesses the most frequent character
+        2. If there are known characters then it guesses the next characters
+        3. If it runs out of options then it guesses randomly
+    """
+    # Private Instance Attributes:
+    #   - _game_graph:
+    #       The GameGraph that this player uses to make its moves. If None, then this
+    #       player just makes random moves.
+    _graph: Optional[hm_game_graph.GameGraph]
+
+    def __init__(self, graph: hm_game_graph.GameGraph) -> None:
+        """Initialize this player.
+
+        Preconditions:
+            - graph represents a game graph
+        """
+        self._graph = graph
+        self._visited_characters = set()
+
+    def make_guess(self, game: hangman.Hangman, previous_move: Optional[str]) -> str:
+        """Make a guess given the current game.
+
+        previous_character is the player's most recently guessed character, or None if no guesses
+        have been made.
+        """
+
+        status = game.get_guess_status()
+        if status == '?' * len(status):
+            # Beginning, choose most common character
+            chars = {(w, self._graph.get_vertex_weight(w))
+                     for w in self._graph.get_all_vertices()
+                     if w not in self._visited_characters}
+            choice = max(chars, key=lambda p: p[1])[0]
+            self._visited_characters.add(choice)
+            print('Beginning ', end='  ')
+            return choice
+
+        # Guess adjacent character (first one seen)
+        for i in range(len(status) - 1):
+            s = status[i]
+            n = status[i + 1]
+            if (s in VALID_CHARACTERS) and (n == '?') and (s in self._graph):
+                chars = {(w, self._graph.get_weight(s, w))
+                          for w in self._graph.get_neighbours(s)
+                          if w not in self._visited_characters}
+                if len(chars) > 0:
+                    choice = max(chars, key=lambda p: p[1])[0]
+                    self._visited_characters.add(choice)
+                    print('Adjacent', s, end='  ')
+                    return choice
+
+        # Last resort, random guess
+        char = random.choice(VALID_CHARACTERS)
+        while char in self._visited_characters:
+            char = random.choice(VALID_CHARACTERS)
+        self._visited_characters.add(char)
+        print('Random    ', end='  ')
+        return char
 
 
 class RandomTreePlayer(hangman.Player):
