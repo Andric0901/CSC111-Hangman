@@ -260,7 +260,8 @@ def run_games(n: int, white: Player, black: Player,
     ...
 
 
-def run_game(player: Player, word: str = None) -> tuple[float, bool, list[str], str]:
+def run_game(player: Player, word: str = None,
+             verbose: bool = False) -> tuple[float, bool, list[str], str]:
     """Run a Hangman game.
 
     Return a tuple containing the efficiency score, a bool representing whether
@@ -294,6 +295,8 @@ def run_game(player: Player, word: str = None) -> tuple[float, bool, list[str], 
             user_guess = player.make_guess(hangman, previous_character)
 
         hangman.make_guess(user_guess)
+        if verbose:
+            print(user_guess, ' ', hangman.get_guess_status())
 
         previous_character = user_guess
         guess_sequence.append(user_guess)
@@ -347,4 +350,12 @@ def run_example_game(word: str = None) -> None:
 
 
 if __name__ == "__main__":
-    run_example_game()
+    # run_example_game()
+    import hm_players
+    graph = hm_players.load_word_bank('Small.txt')
+    player = hm_players.GraphNextPlayer(graph)
+    print('Running game with GraphNextPlayer')
+    state = run_game(player, None, verbose=True)
+    print('Won' if state[1] else 'Lost')
+    print('Word:', state[3])
+    
