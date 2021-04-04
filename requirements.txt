@@ -1,0 +1,4 @@
+random-word
+pyyaml
+numpy
+pillow
