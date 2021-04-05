@@ -39,31 +39,31 @@ class Project(Frame):
 
         # Open image assets
         bg = Image.open('Assets/Background.jpg').convert('RGBA')
-        self.background = np.array(bg, 'float')
+        self.background = np.array(bg, 'float32')
 
         title = Image.open('Assets/Title.png')
-        self.title = np.array(title, 'float')
+        self.title = np.array(title, 'float32')
 
         graphic = Image.open('Assets/Hangman.png').resize((180, 150))
-        self.graphic = 255 - np.array(graphic, 'float')
+        self.graphic = 255 - np.array(graphic, 'float32')
 
         light = Image.open('Assets/LightRay.png')
-        self.light = np.array(light, 'float') * 0.6
+        self.light = np.array(light, 'float32') * 0.6
 
         letterImgs = {'N': 0, 'V': 0, 'H': 0, 'P': 0}
         letterFile = 'Assets/Letters{}.png'
         for i in letterImgs:
-            letterImgs[i] = np.array(Image.open(letterFile.format(i)), 'float')
+            letterImgs[i] = np.array(Image.open(letterFile.format(i)), 'float32')
             letterImgs[i] *= np.expand_dims(letterImgs[i][:,:,3] / 255, -1)
         self.letterImgs = letterImgs
 
         self.lettersOffsets = ((np.random.random((8, 2)) - 0.5) * 400).astype('int')
 
-        names = Image.open("Assets/Names.png").convert("RGBA").resize((400, 36))
-        self.names = np.array(names, "float")
+        names = Image.open('Assets/Names.png').convert('RGBA').resize((400, 36))
+        self.names = np.array(names, 'float32')
 
-        button = Image.open("Assets/Button.png")
-        self.button = np.array(button, "float") * 1
+        button = Image.open('Assets/Button.png')
+        self.button = np.array(button, 'float32')
 
         # Copy so we can change the intensity of each button individually
         self.buttons = [np.array(self.button),
@@ -72,7 +72,7 @@ class Project(Frame):
                         np.array(self.button)]
 
         cursor = Image.open('Assets/Cursor.png').resize((53, 50))
-        self.cursor = np.clip(np.array(cursor, 'float') * 1.8, None, 255)
+        self.cursor = np.clip(np.array(cursor, 'float32') * 1.8, None, 255)
 
     def start(self) -> None:
         """Start the rendering loop"""
@@ -85,10 +85,10 @@ class Project(Frame):
         self.grid(sticky=N+E+S+W)
 
         self.d = Canvas(self, width=self.W, height=self.H,
-                        highlightthickness=0, highlightbackground="black")
+                        highlightthickness=0, highlightbackground='black')
         self.d.grid(row=0, column=0, sticky=N+E+S+W)
-        self.d.config(background="#000", cursor='none')
-        self.d.bind("<Button-1>", self.clicked)
+        self.d.config(background='#000', cursor='none')
+        self.d.bind('<Button-1>', self.clicked)
         self.finalRender = self.d.create_image((self.W/2, self.H/2))
 
 
@@ -258,8 +258,8 @@ class Project(Frame):
 
         if method == 'alpha':
             alpha = np.expand_dims(source[:,:,3], -1) / 255
-            dest[up:down, left:right] = dest[up:down, left:right] * (1-alpha) \
-                                        + source * alpha
+            dest[up:down, left:right] *= 1 - alpha
+            dest[up:down, left:right] += source * alpha
 
         if method == 'add':
             dest[up:down, left:right] += source
