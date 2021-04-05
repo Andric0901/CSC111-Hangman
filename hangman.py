@@ -10,6 +10,7 @@ Installation instructions:
 """
 from random_word import RandomWords
 from typing import Optional
+import random
 
 GAME_START_CHARACTER = '*'
 VALID_CHARACTERS = 'abcdefghijklmnopqrstuvwxyz'
@@ -70,8 +71,11 @@ class Hangman:
 
     def _choose_random_word(self) -> Optional[str]:
         """Return a random english word, in lower case."""
-        r = RandomWords()
-        return r.get_random_word(minLength=8).lower()
+        # r = RandomWords()
+        # return r.get_random_word(minLength=8).lower()
+        with open('word_bank.txt') as file:
+            r = random.randint(0, int(file.readline()))
+            return file.readlines()[r].strip('\n')
 
     def set_tries(self, tries: int) -> None:
         """Set a new number of tries (mutates self._tries_left and self._total_tries)."""
