@@ -136,7 +136,10 @@ class Project(Frame):
 
         # Convert numpy array to image
         frame[:,:,3] = 255
-        frame = np.clip(frame, 0, 255)
+        # See https://github.com/numpy/numpy/issues/14281
+        # np.clip(frame, 0, 255, out=frame)
+        np.maximum(frame, 0, out=frame)
+        np.minimum(frame, 255, out=frame)
         i = Image.fromarray(frame.astype("uint8"))
         self.cf = ImageTk.PhotoImage(i)
         self.d.itemconfigure(self.finalRender, image=self.cf)
