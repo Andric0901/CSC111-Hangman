@@ -1,7 +1,7 @@
 """The Hangman GameGraph"""
 
 from __future__ import annotations
-from typing import Optional
+# from typing import Optional
 
 VALID_CHARACTERS = 'abcdefghijklmnopqrstuvwxyz'
 
@@ -11,7 +11,7 @@ class _WeightedVertex:
 
     Neighbours are letters that appear next to this character
     Weight of each neighbour is relative to total
-    
+
     Representation invariant:
         - sum(neighbours.values()) == total_weight
     """
@@ -45,7 +45,7 @@ class GameGraph:
         >>> game = GameGraph()
         """
         self._vertices = {}
-    
+
     def add_vertex(self, item: str) -> None:
         """Add a vertex with the given item to this graph.
 
@@ -58,6 +58,16 @@ class GameGraph:
     def __contains__(self, item: str) -> bool:
         """Check if item is in graph"""
         return item in self._vertices
+
+    def get_vertex_by_item(self, item: str) -> _WeightedVertex:
+        """Return the weighted vertex that contains the item.
+
+        Raise ValueError if no such item is present in the GameGraph.
+        """
+        if item in self._vertices:
+            return self._vertices[item]
+        else:
+            raise ValueError
 
     def accumulate_edge(self, item1: str, item2: str, weight: float = 1) -> None:
         """Adds value to the DIRECTED edge between the two vertices in this graph.
@@ -100,16 +110,16 @@ class GameGraph:
         """Return all vertex items"""
         return set(self._vertices.keys())
 
-    def get_neighbours(self, item: str) -> dict:
+    def get_neighbours(self, item: str) -> set:
         """Return the neighbours of item node"""
         return {v.item for v in self._vertices[item].neighbours.keys()}
 
-    def insert_character_sequence(self, characters: list[str]) -> None:
+    def insert_character_sequence(self, characters: str) -> None:
         """Insert the given sequence of characters into this tree.
 
         >>> game = GameGraph()
-        >>> game.insert_character_sequence(list('test'))
-        >>> game.insert_character_sequence(list('interesting'))
+        >>> game.insert_character_sequence('test')
+        >>> game.insert_character_sequence('interesting')
         >>> game.get_weight('e', 's')
         2
         >>> game.get_weight('e', 'r')
@@ -117,7 +127,7 @@ class GameGraph:
         """
         for c in characters:
             self.add_vertex(c)
-        
+
         for i in range(len(characters) - 1):
             self.accumulate_edge(characters[i], characters[i+1], 1)
 

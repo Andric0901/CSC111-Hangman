@@ -232,10 +232,10 @@ class Player:
     #       to exclude the duplicate guesses.
     _visited_characters = set()
 
-    def make_guess(self, game: Hangman, previous_character: Optional[str]) -> str:
+    def make_guess(self, game: Hangman, previous_guess: Optional[str]) -> str:
         """Make a guess given the current game.
 
-        previous_character is the player's most recently guessed character, or None if no guesses
+        previous_guess is the player's most recently guessed character, or None if no guesses
         have been made.
         """
         raise NotImplementedError
@@ -318,6 +318,28 @@ def run_game(player: Player, word: str = None,
         )
 
 
+def _extract_valid_words(file_path: str) -> None:
+    """Write a file containing only the valid words.
+
+    In this Hangman game, a word is valid iff all the characters in such word are in
+    VALID_CHARACTERS.
+
+    This function is PRIVATE, and it is only meant to be used once with the
+    anagram_dictionary.txt file.
+    """
+    f = open("valid_words_large.txt", 'w+')
+    with open(file_path) as file:
+        for row in file:
+            stripped = row.strip()
+            is_valid = True
+            for char in stripped:
+                if char not in VALID_CHARACTERS:
+                    is_valid = False
+            if is_valid:
+                f.write(row)
+    f.close()
+
+
 def run_example_game(word: str = None) -> None:
     """Run an example Hangman game."""
     hangman = Hangman()
@@ -358,4 +380,3 @@ if __name__ == "__main__":
     state = run_game(player, None, verbose=True)
     print('Won' if state[1] else 'Lost')
     print('Word:', state[3])
-    

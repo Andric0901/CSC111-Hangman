@@ -1,6 +1,5 @@
 """All Hangman AI Players."""
 
-import csv
 import random
 from typing import Optional
 
@@ -37,6 +36,85 @@ class RandomPlayer(hangman.Player):
         return chosen_character
 
 
+class RandomGraphPlayer(hangman.Player):
+    """A hangman player that plays randomly based on a give GameGraph.
+
+    This player uses a game graph to make guesses as the game is played.
+    On its turn:
+        - At first, the AI will choose randomly from all the available characters (i.e., vertices)
+        in the given GameGraph.
+        - If there are neighbours to the previously chosen vertex, choose a random one
+        for the next guess
+        - If there are no neighbours, the AI guesses randomly.
+    """
+    # Private Instance Attributes:
+    #   - _game_graph:
+    #       The GameGraph that this player uses to make its guesses. If None, then this
+    #       player just makes random guesses.
+    _graph: Optional[hm_game_graph.GameGraph]
+
+    def __init__(self, graph: hm_game_graph.GameGraph) -> None:
+        """Initialize this player.
+
+        Preconditions:
+            - graph represents a game graph
+        """
+        self._graph = graph
+        self._visited_characters = set()
+
+    def make_guess(self, game: hangman.Hangman, previous_character: Optional[str]) -> str:
+        """Make a guess given the current game.
+
+        previous_guess is the player's most recently guessed character, or None if no guesses
+        have been made.
+        """
+        if previous_character is None:
+            # First guess, choose randomly among all the vertices
+            all_items = self._graph.get_all_vertices()
+            chosen_item = random.choice(list(all_items))
+            while chosen_item in self._visited_characters:
+                chosen_item = random.choice(list(all_items))
+            self._visited_characters.add(chosen_item)
+            return chosen_item
+        else:
+            # Not first guess, makes random guesses based on neighbours
+            get_previous_vertex = self._graph.get_vertex_by_item(previous_character)
+            all_neighbouring_vertices = [v for v in get_previous_vertex.neighbours]
+            if len(all_neighbouring_vertices) == 0:
+                # If there are no neighbours (highly unlikely), guess randomly
+                all_characters_list = [char for char in VALID_CHARACTERS]
+                random_character = random.choice(all_characters_list)
+                while random_character in self._visited_characters:
+                    random_character = random.choice(all_characters_list)
+                self._visited_characters.add(random_character)
+                return random_character
+            else:
+                # If there are at least one neighbour, guess randomly among its neighbours
+                all_neighbouring_vertices_copy = all_neighbouring_vertices.copy()
+                chosen_vertex = random.choice(all_neighbouring_vertices_copy)
+                while True:
+                    if chosen_vertex.item not in self._visited_characters or \
+                            len(all_neighbouring_vertices_copy) == 0:
+                        break
+                    else:
+                        all_neighbouring_vertices_copy.remove(chosen_vertex)
+                        if len(all_neighbouring_vertices_copy) == 0:
+                            break
+                        else:
+                            chosen_vertex = random.choice(all_neighbouring_vertices_copy)
+
+                if (len(all_neighbouring_vertices_copy)) == 0:
+                    all_items = self._graph.get_all_vertices()
+                    chosen_item = random.choice(list(all_items))
+                    while chosen_item in self._visited_characters:
+                        chosen_item = random.choice(list(all_items))
+                    self._visited_characters.add(chosen_item)
+                    return chosen_item
+                else:
+                    self._visited_characters.add(chosen_vertex.item)
+                    return chosen_vertex.item
+
+
 class GraphNextPlayer(hangman.Player):
     """A Hangman player that plays based on a given GameGraph.
 
@@ -49,8 +127,8 @@ class GraphNextPlayer(hangman.Player):
     """
     # Private Instance Attributes:
     #   - _game_graph:
-    #       The GameGraph that this player uses to make its moves. If None, then this
-    #       player just makes random moves.
+    #       The GameGraph that this player uses to make its guesses. If None, then this
+    #       player just makes random guesses.
     _graph: Optional[hm_game_graph.GameGraph]
 
     def __init__(self, graph: hm_game_graph.GameGraph) -> None:
@@ -62,10 +140,10 @@ class GraphNextPlayer(hangman.Player):
         self._graph = graph
         self._visited_characters = set()
 
-    def make_guess(self, game: hangman.Hangman, previous_move: Optional[str]) -> str:
+    def make_guess(self, game: hangman.Hangman, previous_guess: Optional[str]) -> str:
         """Make a guess given the current game.
 
-        previous_character is the player's most recently guessed character, or None if no guesses
+        previous_guess is the player's most recently guessed character, or None if no guesses
         have been made.
         """
 
@@ -86,8 +164,8 @@ class GraphNextPlayer(hangman.Player):
             n = status[i + 1]
             if (s in VALID_CHARACTERS) and (n == '?') and (s in self._graph):
                 chars = {(w, self._graph.get_weight(s, w))
-                          for w in self._graph.get_neighbours(s)
-                          if w not in self._visited_characters}
+                         for w in self._graph.get_neighbours(s)
+                         if w not in self._visited_characters}
                 if len(chars) > 0:
                     choice = max(chars, key=lambda p: p[1])[0]
                     self._visited_characters.add(choice)
@@ -103,6 +181,53 @@ class GraphNextPlayer(hangman.Player):
         return char
 
 
+class FrequentPlayer(hangman.Player):
+    """A Hangman player that only guesses the frequently guessed characters.
+
+    This player uses a game graph to make guesses as the game is played.
+    On its turn, it chooses the most frequently guessed character
+    that has not been guessed before.
+    """
+    # Private Instance Attributes:
+    #   - _game_graph:
+    #       The GameGraph that this player uses to make its guesses. If None, then this
+    #       player just makes random guesses.
+    _graph: Optional[hm_game_graph.GameGraph]
+
+    def __init__(self, graph: hm_game_graph.GameGraph) -> None:
+        """Initialize this player.
+
+        Preconditions:
+            - graph represents a game graph
+        """
+        self._graph = graph
+        self._visited_characters = set()
+
+    def make_guess(self, game: hangman.Hangman, previous_guess: Optional[str]) -> str:
+        """Make a guess given the current game.
+
+        previous_guess is the player's most recently guessed character, or None if no guesses
+        have been made.
+        """
+        all_items = self._graph.get_all_vertices()
+        max_weight = -1
+        max_item = None
+        for item in all_items:
+            weight = self._graph.get_vertex_weight(item)
+            if weight > max_weight:
+                if item not in self._visited_characters:
+                    max_weight = weight
+                    max_item = item
+        if max_item is None:
+            # TODO: All items are guessed... Does this case ever happen?
+            ...
+        else:
+            # print((max_item, max_weight))
+            self._visited_characters.add(max_item)
+            return max_item
+
+
+# TODO: Not necessary anymore
 class RandomTreePlayer(hangman.Player):
     """A Hangman player that plays randomly based on a given GameTree.
 
@@ -157,3 +282,31 @@ class RandomTreePlayer(hangman.Player):
                 chosen_character = random.choice(VALID_CHARACTERS)
             self._visited_characters.add(chosen_character)
             return chosen_character
+
+
+if __name__ == "__main__":
+    import hangman
+    g = load_word_bank('valid_words_large.txt')
+    h = hangman.Hangman()
+
+    # random_p = RandomPlayer()
+    # for _ in range(500000):
+    #     print(hangman.run_game(random_p))
+    #     random_p._visited_characters = set()
+
+    # frequent_p = FrequentPlayer(g)
+    # for _ in range(500000):
+    #     print(hangman.run_game(frequent_p))
+    #     frequent_p._visited_characters = set()
+
+    # random_graph_p = RandomGraphPlayer(g)
+    # for _ in range(500000):
+    #     print(hangman.run_game(random_graph_p))
+    #     random_graph_p._visited_characters = set()
+
+    # graph_next_p = GraphNextPlayer(g)
+    # for _ in range(500000):
+    #     # TODO: if testing GraphNextPlayer with this code,
+    #     #       comment out 3 print statements inside GraphNextPlayer.make_guess()
+    #     print(hangman.run_game(graph_next_p))
+    #     graph_next_p._visited_characters = set()
