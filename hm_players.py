@@ -10,14 +10,21 @@ import hangman
 VALID_CHARACTERS = 'abcdefghijklmnopqrstuvwxyz'
 
 
-def load_word_bank(games_file: str) -> hm_game_graph.GameGraph:
-    """Create a word bank (i.e., a game graph) based on games_file."""
-    empty_game_graph = hm_game_graph.GameGraph()
+def load_word_bank(games_file: str, order: str = 'next') -> hm_game_graph.GameGraph:
+    """Create a word bank (i.e., a game graph) based on games_file.
+
+    Preconditions:
+        - order in {'next', 'prev', 'both'}
+    """
+    graph = hm_game_graph.GameGraph()
     with open(games_file) as file:
         for row in file:
-            empty_game_graph.insert_character_sequence(row.strip('\n'))
+            if order != 'prev':
+                graph.insert_character_sequence(row.strip('\n'))
+            if order != 'next':
+                graph.insert_character_sequence(row.strip('\n')[::-1])
 
-    return empty_game_graph
+    return graph
 
 
 class RandomPlayer(hangman.Player):
