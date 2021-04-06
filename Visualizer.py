@@ -1,6 +1,6 @@
 # Main menu
 
-from tkinter import *
+from tkinter import Frame, Tk, Canvas, N, E, S, W
 from PIL import Image, ImageTk, ImageDraw
 import numpy as np
 import time
@@ -8,6 +8,27 @@ from math import sin
 
 
 f = ('Times', 32, 'bold')
+
+
+class Coords:
+    """Represents coordinates for an element in the GUI
+
+    Instance attributes:
+        - pos: The element is centered on these (x, y) coordinates.
+        - w2, h2: The radii of the element (1/2 of its dimensions).
+        - bounds: The (left, up, right, down) coordinates.
+    """
+    pos: tuple[int, int]
+    w2: int
+    h2: int
+    bounds: tuple[int, int, int, int]
+
+    def __init__(self, x: int, y: int, w2: int, h2: int) -> None:
+        self.pos = (x, y)
+        self.w2 = w2
+        self.h2 = h2
+        self.bounds = (x - w2, y - h2, x + w2, y + h2)
+
 
 class Project(Frame):
     """Tkinter window for the main menu"""
@@ -71,6 +92,14 @@ class Project(Frame):
                         np.array(self.button),
                         np.array(self.button)]
 
+        dims = (120, 60)
+        self.buttonPos = [
+            Coords(self.W//4, self.H-360, *dims),
+            Coords(self.W//4, self.H-180, *dims),
+            Coords(self.W*3//4, self.H-360, *dims),
+            Coords(self.W*3//4, self.H-180, *dims)
+            ]
+
         cursor = Image.open('Assets/Cursor.png').resize((53, 50))
         self.cursor = np.clip(np.array(cursor, 'float32') * 1.8, None, 255)
 
@@ -124,10 +153,8 @@ class Project(Frame):
         self.blend(frame, self.light, (w2, self.H//2), 'add')
 
         # Blend in menu buttons
-        self.blend(frame, self.buttons[0], (self.W//4, self.H-360), 'alpha')
-        self.blend(frame, self.buttons[1], (self.W//4, self.H-180), 'alpha')
-        self.blend(frame, self.buttons[2], (self.W*3//4, self.H-360), 'alpha')
-        self.blend(frame, self.buttons[3], (self.W*3//4, self.H-180), 'alpha')
+        for i in range(len(self.buttons)):
+            self.blend(frame, self.buttons[i], self.buttonPos[i].pos, 'alpha')
 
         # Blend cursor
         mx = max(0, min(self.W, self.d.winfo_pointerx() - self.d.winfo_rootx()))
@@ -167,10 +194,8 @@ class Project(Frame):
         y = self.d.winfo_pointery() - self.d.winfo_rooty()
 
         # Button updating
-        self.updateButton(0, x, y, (100, 200, 380, 280))
-        self.updateButton(1, x, y, (100, 380, 380, 460))
-        self.updateButton(2, x, y, (580, 200, 860, 280))
-        self.updateButton(3, x, y, (580, 380, 860, 460))
+        for i in range(len(self.buttons)):
+            self.updateButton(i, x, y, self.buttonPos[i].bounds)
 
         # This takes the most time
         self.render()
@@ -190,14 +215,13 @@ class Project(Frame):
     def clicked(self, evt) -> None:
         """Handle click events"""
         if self.window == 'Menu':
-            if self.selected(evt.x, evt.y, (100, 240, 380, 320)):
+            if self.selected(evt.x, evt.y, self.buttonPos[0].bounds):
                 print("Button 0 pressed")
-            if self.selected(evt.x, evt.y, (100, 380, 380, 460)):
+            if self.selected(evt.x, evt.y, self.buttonPos[1].bounds):
                 print("Button 1 pressed")
-            if self.selected(evt.x, evt.y, (500, 240, 780, 320)):
+            if self.selected(evt.x, evt.y, self.buttonPos[2].bounds):
                 print("Button 2 pressed")
-
-            if self.selected(evt.x, evt.y, (500, 380, 780, 460)):
+            if self.selected(evt.x, evt.y, self.buttonPos[3].bounds):
                 print("Quit")
                 self.root.destroy()
 
