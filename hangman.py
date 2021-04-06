@@ -378,9 +378,13 @@ def run_example_game(word: str = None) -> None:
 if __name__ == "__main__":
     # run_example_game()
     import hm_players
-    graph = hm_players.load_word_bank('Small.txt')
-    player = hm_players.GraphNextPlayer(graph)
-    print('Running game with GraphNextPlayer')
+    # graph = hm_players.load_word_bank('Small.txt')
+    # player = hm_players.GraphNextPlayer(graph)
+    # print('Running game with GraphNextPlayer')
+    graph = hm_players.load_word_bank('Small.txt', 'prev')
+    player = hm_players.GraphPrevPlayer(graph)
+    print('Running game with GraphPrevPlayer')
+
     state = run_game(player, None, verbose=True)
     print('Won' if state[1] else 'Lost')
     print('Word:', state[3])

@@ -160,7 +160,7 @@ class GraphNextPlayer(hangman.Player):
             return self.frequency_guess(game)
 
         # Guess adjacent character (first one seen)
-        choice = self.next_guess(game)
+        choice = self.adjacent_guess(game)
         if choice is not None:
             print('Adjacent', choice[1], end='  ')
             return choice[0]
@@ -178,7 +178,7 @@ class GraphNextPlayer(hangman.Player):
         self._visited_characters.add(choice)
         return choice
 
-    def next_guess(self, game: hangman.Hangman) -> Optional[tuple[str, str]]:
+    def adjacent_guess(self, game: hangman.Hangman) -> Optional[tuple[str, str]]:
         """Guess a letter that comes after a known letter.
         Returns (choice, s) where s is the known letter."""
         status = game.get_guess_status()
@@ -201,6 +201,27 @@ class GraphNextPlayer(hangman.Player):
             char = random.choice(VALID_CHARACTERS)
         self._visited_characters.add(char)
         return char
+
+
+class GraphPrevPlayer(GraphNextPlayer):
+    """This player is the counterpart to GraphNextPlayer.
+    It guesses the letter before a known letter."""
+
+    def adjacent_guess(self, game: hangman.Hangman) -> Optional[tuple[str, str]]:
+        """Guess the letter that comes after a known letter.
+        Returns (choice, s) where s is the known letter."""
+        status = game.get_guess_status()
+        for i in range(len(status) - 1):
+            s = status[i + 1]
+            n = status[i]
+            if (s in VALID_CHARACTERS) and (n == '?') and (s in self._graph):
+                chars = {(w, self._graph.get_weight(s, w))
+                         for w in self._graph.get_neighbours(s)
+                         if w not in self._visited_characters}
+                if len(chars) > 0:
+                    choice = max(chars, key=lambda p: p[1])[0]
+                    self._visited_characters.add(choice)
+                    return (choice, s)
 
 
 class FrequentPlayer(hangman.Player):
