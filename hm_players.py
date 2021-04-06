@@ -153,19 +153,35 @@ class GraphNextPlayer(hangman.Player):
         previous_guess is the player's most recently guessed character, or None if no guesses
         have been made.
         """
-
         status = game.get_guess_status()
         if status == '?' * len(status):
             # Beginning, choose most common character
-            chars = {(w, self._graph.get_vertex_weight(w))
-                     for w in self._graph.get_all_vertices()
-                     if w not in self._visited_characters}
-            choice = max(chars, key=lambda p: p[1])[0]
-            self._visited_characters.add(choice)
             print('Beginning ', end='  ')
-            return choice
+            return self.frequency_guess(game)
 
         # Guess adjacent character (first one seen)
+        choice = self.next_guess(game)
+        if choice is not None:
+            print('Adjacent', choice[1], end='  ')
+            return choice[0]
+
+        # Last resort, random guess
+        print('Random    ', end='  ')
+        return self.random_guess()
+
+    def frequency_guess(self, game: hangman.Hangman) -> str:
+        """Guess the most common letter"""
+        chars = {(w, self._graph.get_vertex_weight(w))
+                 for w in self._graph.get_all_vertices()
+                 if w not in self._visited_characters}
+        choice = max(chars, key=lambda p: p[1])[0]
+        self._visited_characters.add(choice)
+        return choice
+
+    def next_guess(self, game: hangman.Hangman) -> Optional[tuple[str, str]]:
+        """Guess a letter that comes after a known letter.
+        Returns (choice, s) where s is the known letter."""
+        status = game.get_guess_status()
         for i in range(len(status) - 1):
             s = status[i]
             n = status[i + 1]
@@ -176,15 +192,14 @@ class GraphNextPlayer(hangman.Player):
                 if len(chars) > 0:
                     choice = max(chars, key=lambda p: p[1])[0]
                     self._visited_characters.add(choice)
-                    print('Adjacent', s, end='  ')
-                    return choice
+                    return (choice, s)
 
-        # Last resort, random guess
+    def random_guess(self) -> str:
+        """Make a random guess"""
         char = random.choice(VALID_CHARACTERS)
         while char in self._visited_characters:
             char = random.choice(VALID_CHARACTERS)
         self._visited_characters.add(char)
-        print('Random    ', end='  ')
         return char
 
 
