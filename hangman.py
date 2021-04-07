@@ -30,8 +30,6 @@ class Hangman:
         - _user_chosen_character: a str representing user's chosen character as a guess.
         - tries_left: an int representing the number of tries left before it's Game Over.
         By default there are 10 tries.
-        - _efficiency_score: a float representing how efficient an AI / a user is.
-        The default score is 100.0.
 
     Representation invariant:
         - len(Hangman._guessed_status) == len(Hangman._chosen_word)
@@ -43,7 +41,6 @@ class Hangman:
     _count: int = 0
     _user_guessed_character: str = None
     _tries_left: int = 10
-    _efficiency_score: float = 100.0
 
     def __init__(self) -> None:
         """Initializes the Hangman variable."""
@@ -122,9 +119,17 @@ class Hangman:
         """Return the number of tries left."""
         return self._tries_left
 
-    def get_efficiency_score(self) -> float:
-        """Return the efficiency score."""
-        return self._efficiency_score
+    def get_efficiency_score(self, bonus_weight: float = 0.2) -> float:
+        """Return the efficiency score of the player.
+
+        The efficiency is a decreasing function from N to [1, 0)
+        on the number of guesses made."""
+        if self._count == 0:
+            return 1
+        distinct = len(set(self._chosen_word))
+
+        return bonus_weight * max(0, 1 - self._count / distinct) \
+               + (1 - bonus_weight) * min(1, distinct / self._count)
 
     def word_is_empty(self) -> bool:
         """Return whether the chosen_word is None (i.e., empty and not initialized)."""
@@ -157,30 +162,26 @@ class Hangman:
             raise EmptyWordError('Word not yet initialized')
         elif self.guess_status_is_empty():
             raise EmptyWordError('Guess status not yet initialized')
-        else:
-            # assert not self.guess_status_is_empty() and not self.word_is_empty()
-            if character in self._chosen_word:
-                index_list = []
-                current_index = 0
-                for char in self._chosen_word:
-                    if char == character:
-                        index_list.append(current_index)
-                    current_index += 1
-                # assert index_list != []
-                current_index = 0
-                for _ in self._guess_status:
-                    if current_index in index_list:
-                        self._guess_status[current_index] = character
-                    current_index += 1
 
-                self._efficiency_score -= 20 / self.TOTAL_TRIES
-                if self._efficiency_score < 0:
-                    self._efficiency_score = 0.0
-            else:
-                self._tries_left -= 1
-                self._efficiency_score -= 100 / self.TOTAL_TRIES
-                if self._efficiency_score < 0:
-                    self._efficiency_score = 0.0
+        self._count += 1
+
+        # assert not self.guess_status_is_empty() and not self.word_is_empty()
+        if character in self._chosen_word:
+            index_list = []
+            current_index = 0
+            for char in self._chosen_word:
+                if char == character:
+                    index_list.append(current_index)
+                current_index += 1
+            # assert index_list != []
+            current_index = 0
+            for _ in self._guess_status:
+                if current_index in index_list:
+                    self._guess_status[current_index] = character
+                current_index += 1
+
+        else:
+            self._tries_left -= 1
 
     def guess_word(self, word: str) -> None:
         """Guess a word using the given word.
@@ -195,14 +196,13 @@ class Hangman:
             raise EmptyWordError('Word not yet initialized')
         elif self.guess_status_is_empty():
             raise EmptyWordError('Guess status not yet initialized')
+
+        self._count += 1
+
+        if self.get_chosen_word() == word:
+            self._guess_status = self._chosen_word
         else:
-            if self.get_chosen_word() == word:
-                self._guess_status = self._chosen_word
-            else:
-                self._tries_left -= 1
-                self._efficiency_score -= 100 / self.TOTAL_TRIES
-                if self._efficiency_score < 0:
-                    self._efficiency_score = 0.0
+            self._tries_left -= 1
 
     def make_guess(self, input_: str) -> None:
         """Makes a guess with the given input.
@@ -306,7 +306,6 @@ def run_game(player: Player, word: str = None,
         guess_sequence.append(user_guess)
 
     if hangman.get_num_tries() == 0:
-        assert hangman.get_efficiency_score() == 0.0
         return (
             hangman.get_efficiency_score(),
             False,
@@ -385,6 +384,6 @@ if __name__ == "__main__":
     player = hm_players.GraphPrevPlayer(graph)
     print('Running game with GraphPrevPlayer')
 
-    state = run_game(player, None, verbose=True)
+    state = run_game(player, 'interesting', verbose=True)
     print('Won' if state[1] else 'Lost')
     print('Word:', state[3])
