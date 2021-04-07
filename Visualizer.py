@@ -174,19 +174,12 @@ class Project(Frame):
         self.clearCanvas()
         
         # Add text to buttons
-        self.text0 = self.d.create_text(self.W*1//4, self.H-360,
-                                        text="Instructions", fill="#fff", font=f)
+        texts = ['Instructions', 'Play!', 'Compare AI', 'Quit']
+        self.texts = [self.d.create_text(*self.buttonPos[i].pos,
+                                         text=texts[i], fill='#fff', font=f)
+                      for i in range(len(self.buttons))]
 
-        self.text1 = self.d.create_text(self.W*1//4, self.H-180,
-                                        text="Play!", fill="#fff", font=f)
-
-        self.text2 = self.d.create_text(self.W*3//4, self.H-360,
-                                        text="Compare AI", fill="#fff", font=f)
-
-        self.text3 = self.d.create_text(self.W*3//4, self.H-180,
-                                        text="Quit", fill="#fff", font=f)
-
-        self.canvasItems = [self.text0, self.text1, self.text2, self.text3]
+        self.canvasItems = self.texts
 
 
     def updateCanvas(self) -> None:
