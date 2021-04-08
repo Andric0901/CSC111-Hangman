@@ -65,7 +65,10 @@ class Project(Frame):
 
         self.window = 'Menu'
 
-        # Open image assets
+        self.loadMenuAssets()
+
+    def loadMenuAssets(self) -> None:
+        """Opens image assets used for main menu"""
         bg = Image.open('Assets/Background.jpg').convert('RGBA')
         self.background = np.array(bg, 'float32')
 
@@ -101,19 +104,45 @@ class Project(Frame):
 
         dims = (120, 60)
         self.buttonPos = [
-            Coords(self.W//4, self.H-360, *dims),
-            Coords(self.W//4, self.H-180, *dims),
-            Coords(self.W*3//4, self.H-360, *dims),
-            Coords(self.W*3//4, self.H-180, *dims)
+            Coords(self.W*2//9, self.H-360, *dims),
+            Coords(self.W*2//9, self.H-180, *dims),
+            Coords(self.W*7//9, self.H-360, *dims),
+            Coords(self.W*7//9, self.H-180, *dims)
             ]
 
         cursor = Image.open('Assets/Cursor.png').resize((53, 50))
         self.cursor = np.clip(np.array(cursor, 'float32') * 1.8, None, 255)
 
+    def loadSelectionAssets(self) -> None:
+        """Opens image assets used in AI selection menu"""
+        panel = np.array(Image.open('Assets/Panel.png'), 'float32')
+        title = np.array(Image.open('Assets/Title_select.png'), 'float32')
+        button = np.array(Image.open('Assets/Button2.png'), 'float32')
+        rect = np.array(Image.open('Assets/Rectangle.png'), 'float32') * 0.4
+
+        bg = np.array(self.background)
+        self.blend(bg, title, (self.W//2, self.H//8-40), 'add')
+        self.blend(bg, self.light, (self.W//2-80, self.H//2), 'add')
+        self.blend(bg, self.light, (self.W//2+50, self.H//2), 'add')
+        self.blend(bg, panel, (self.W//2, self.H//2+25), 'alpha')
+        self.blend(bg, rect, (self.W*6//9, self.H*2//5), 'add')
+        self.temp_bg = np.clip(bg, 0, 255)
+
+        self.button = np.array(button)
+        self.buttons = [np.array(button) for _ in range(5)]
+
+
+        dims = (130, 40)
+        self.buttonPos = [
+            Coords(self.W*2//7-10, 132 + 96 * i, *dims)
+            for i in range(5)
+            ]
+
+
     def start(self) -> None:
         """Start the rendering loop"""
         self.makeWidgets()
-        self.render()
+        self.renderMenu()
         self.after(10, self.updateCanvas)
 
     def makeWidgets(self) -> None:
@@ -128,7 +157,7 @@ class Project(Frame):
         self.finalRender = self.d.create_image((self.W/2, self.H/2))
 
 
-    def render(self) -> None:
+    def renderMenu(self) -> None:
         """Render the main menu"""
         self.totFrames += 1
 
@@ -137,7 +166,7 @@ class Project(Frame):
 
         # Blend in title and names
         self.blend(frame, self.title, (self.W//2, self.H//8), 'add')
-        self.blend(frame, self.graphic, (self.W//2, self.H//3), 'add')
+        self.blend(frame, self.graphic, (self.W//2, self.H//2), 'add')
         self.blend(frame, self.names, (self.W//2, self.H - 60), 'add')
 
         # Blend in decorative text
@@ -188,6 +217,28 @@ class Project(Frame):
 
         self.canvasItems = self.texts
 
+    def renderSelect(self) -> None:
+        """Render the AI selection screen"""
+        self.totFrames += 1
+        
+        frame = np.array(self.temp_bg)
+
+        for i in range(len(self.buttons)):
+            self.blend(frame, self.buttons[i], self.buttonPos[i].pos, 'alpha')
+
+        # Blend cursor
+        mx = max(0, min(self.W, self.d.winfo_pointerx() - self.d.winfo_rootx()))
+        my = max(0, min(self.H, self.d.winfo_pointery() - self.d.winfo_rooty()))
+        self.blend(frame, self.cursor, (mx + 20, my + 20), 'alpha')
+
+        np.maximum(frame, 0, out=frame)
+        np.minimum(frame, 255, out=frame)
+        i = Image.fromarray(frame.astype("uint8"))
+        self.cf = ImageTk.PhotoImage(i)
+        self.d.itemconfigure(self.finalRender, image=self.cf)
+
+        self.clearCanvas()
+        
 
     def updateCanvas(self) -> None:
         x = self.d.winfo_pointerx() - self.d.winfo_rootx()
@@ -198,22 +249,25 @@ class Project(Frame):
             self.updateButton(i, x, y, self.buttonPos[i].bounds)
 
         # This takes the most time
-        self.render()
-
         if self.window == 'Menu':
-            self.after(12, self.updateCanvas)
+            self.renderMenu()
+        elif self.window == 'Select':
+            self.renderSelect()
+
+        self.after(12, self.updateCanvas)
 
 
     def updateButton(self, num, x, y, bounds):
         """Highlight a button if selected"""
         if self.selected(x, y, bounds):
-            self.buttons[num] = 1.3 * self.button
+            self.buttons[num] = 1.4 * self.button
         else:
             self.buttons[num] = 1.0 * self.button
 
 
     def clicked(self, evt) -> None:
         """Handle click events"""
+        print(evt.x, evt.y)
         if self.window == 'Menu':
             if self.selected(evt.x, evt.y, self.buttonPos[0].bounds):
                 print("Button 0 pressed")
@@ -221,6 +275,8 @@ class Project(Frame):
                 print("Button 1 pressed")
             if self.selected(evt.x, evt.y, self.buttonPos[2].bounds):
                 print("Button 2 pressed")
+                self.window = 'Select'
+                self.loadSelectionAssets()
             if self.selected(evt.x, evt.y, self.buttonPos[3].bounds):
                 print("Quit")
                 self.root.destroy()
@@ -285,6 +341,7 @@ class Project(Frame):
 
         if method == 'alpha':
             alpha = np.expand_dims(source[:,:,3], -1) / 255
+            np.minimum(alpha, 1, out=alpha)
             dest[up:down, left:right] *= 1 - alpha
             dest[up:down, left:right] += source * alpha
 
