@@ -1,14 +1,12 @@
 """Simple Hangman Game.
 
-Installation instructions:
+Installation instructions (see requirements.txt):
 
     - Upgrade PIP to the latest version
-    - Settings -> Project -> Python Interpreter -> '+' -> Search "random-word" -> Install
-      (pip install random-word)
-    - Settings -> Project -> Python Interpreter -> '+' -> Search "PyYAML" -> Install
-      (pip install pyyaml)
+    - Install PyYAML (pip install pyyaml)
+    - Install numpy (pip install numpy)
+    - Install Pillow (pip install Pillow)
 """
-from random_word import RandomWords
 from typing import Optional
 import random
 

@@ -1,9 +1,16 @@
-"""All Hangman AI Players."""
+"""All Hangman AI Players.
+
+Brief explanation to each AI player:
+    - RandomPlayer: only plays randomly
+    - RandomGraphPlayer: plays randomly based on the given GameGraph
+    - GraphNextPlayer: if applicable, guesses the next character in the given GameGraph
+    - GraphPrevPlayer: if applicable, guesses the previous character in the given GameGraph
+    - FrequentPlayer: only guesses the frequently guessed characters
+"""
 
 import random
 from typing import Optional
 
-import hm_game_tree
 import hm_game_graph
 import hangman
 
@@ -157,7 +164,7 @@ class GraphNextPlayer(hangman.Player):
         if status == '?' * len(status):
             # Beginning, choose most common character
             print('Beginning ', end='  ')
-            return self.frequency_guess(game)
+            return self.frequency_guess()
 
         # Guess adjacent character (first one seen)
         choice = self.adjacent_guess(game)
@@ -169,7 +176,7 @@ class GraphNextPlayer(hangman.Player):
         print('Random    ', end='  ')
         return self.random_guess()
 
-    def frequency_guess(self, game: hangman.Hangman) -> str:
+    def frequency_guess(self) -> str:
         """Guess the most common letter"""
         chars = {(w, self._graph.get_vertex_weight(w))
                  for w in self._graph.get_all_vertices()
@@ -270,63 +277,6 @@ class FrequentPlayer(hangman.Player):
             return max_item
 
 
-# TODO: Not necessary anymore
-class RandomTreePlayer(hangman.Player):
-    """A Hangman player that plays randomly based on a given GameTree.
-
-    This player uses a game tree to make guesses, descending into the tree as the game is played.
-    On its turn:
-
-        1. First it updates its game tree to its subtree corresponding to the guess made by
-           the AI. If no subtree is found, its game tree is set to None.
-        2. Then, if its game tree is not None, it picks its next character randomly from among
-           the subtrees of its game tree, and then reassigns its game tree to that subtree.
-           But if its game tree is None or has no subtrees, the player picks its next
-           character randomly, and then sets its game tree to None.
-    """
-    # Private Instance Attributes:
-    #   - _game_tree:
-    #       The GameTree that this player uses to make its moves. If None, then this
-    #       player just makes random moves.
-    _game_tree: Optional[hm_game_tree.GameTree]
-
-    def __init__(self, game_tree: hm_game_tree.GameTree) -> None:
-        """Initialize this player.
-
-        Preconditions:
-            - game_tree represents a game tree at the initial state (root is '*')
-        """
-        self._game_tree = game_tree
-
-    def make_guess(self, game: hangman.Hangman, previous_move: Optional[str]) -> str:
-        """Make a guess given the current game.
-
-        previous_character is the player's most recently guessed character, or None if no guesses
-        have been made.
-        """
-        if previous_move is None:
-            pass
-        elif self._game_tree is not None and \
-                self._game_tree.find_subtree_by_character(previous_move) is not None:
-            self._game_tree = self._game_tree.find_subtree_by_character(previous_move)
-        else:
-            self._game_tree = None
-
-        if self._game_tree is not None:
-            subtrees = self._game_tree.get_subtrees()
-            # TODO: loop over the subtrees, check each subtree so that
-            #       the characters are not in self._visited_characters
-            chosen_subtree = random.choice(subtrees)
-            self._game_tree = chosen_subtree
-            return chosen_subtree.character
-        else:
-            chosen_character = random.choice(VALID_CHARACTERS)
-            while chosen_character in self._visited_characters:
-                chosen_character = random.choice(VALID_CHARACTERS)
-            self._visited_characters.add(chosen_character)
-            return chosen_character
-
-
 if __name__ == "__main__":
     import hangman
     g = load_word_bank('valid_words_large.txt')
@@ -336,20 +286,27 @@ if __name__ == "__main__":
     # for _ in range(500000):
     #     print(hangman.run_game(random_p))
     #     random_p._visited_characters = set()
-
+    #
     # frequent_p = FrequentPlayer(g)
     # for _ in range(500000):
     #     print(hangman.run_game(frequent_p))
     #     frequent_p._visited_characters = set()
-
+    #
     # random_graph_p = RandomGraphPlayer(g)
     # for _ in range(500000):
     #     print(hangman.run_game(random_graph_p))
     #     random_graph_p._visited_characters = set()
-
+    #
     # graph_next_p = GraphNextPlayer(g)
     # for _ in range(500000):
     #     # TODO: if testing GraphNextPlayer with this code,
     #     #       comment out 3 print statements inside GraphNextPlayer.make_guess()
     #     print(hangman.run_game(graph_next_p))
     #     graph_next_p._visited_characters = set()
+
+    # graph_prev_p = GraphPrevPlayer(g)
+    # for _ in range(500000):
+    #     # TODO: if testing graph_prev_p with this code,
+    #     #       comment out 3 print statements inside GraphNextPlayer.make_guess()
+    #     print(hangman.run_game(graph_prev_p))
+    #     graph_prev_p._visited_characters = set()

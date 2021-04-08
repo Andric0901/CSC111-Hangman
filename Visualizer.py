@@ -1,3 +1,10 @@
+"""An interactive tkinter window.
+
+    - Install/Update PIL (In the case of denied access, install Pillow instead)
+    - Install numpy
+    - Install tkinter
+"""
+
 # Main menu
 
 from tkinter import Frame, Tk, Canvas, N, E, S, W
@@ -35,7 +42,7 @@ class Project(Frame):
 
     def __init__(self, root=None) -> None:
         """Initializes the window"""
-        
+
         if root is None:
             root = Tk()
         super().__init__(root)
@@ -172,7 +179,7 @@ class Project(Frame):
         self.d.itemconfigure(self.finalRender, image=self.cf)
 
         self.clearCanvas()
-        
+
         # Add text to buttons
         texts = ['Instructions', 'Play!', 'Compare AI', 'Quit']
         self.texts = [self.d.create_text(*self.buttonPos[i].pos,
