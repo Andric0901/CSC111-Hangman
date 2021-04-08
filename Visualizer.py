@@ -5,7 +5,7 @@
     - Install tkinter
 """
 
-# Main menu
+# Main menu + AI selection
 
 from tkinter import Frame, Tk, Canvas, N, E, S, W
 from PIL import Image, ImageTk, ImageDraw
@@ -13,6 +13,7 @@ import numpy as np
 import time
 from math import sin
 
+import hm_players
 
 f = ('Times', 32, 'bold')
 
@@ -118,14 +119,16 @@ class Project(Frame):
         panel = np.array(Image.open('Assets/Panel.png'), 'float32')
         title = np.array(Image.open('Assets/Title_select.png'), 'float32')
         button = np.array(Image.open('Assets/Button2.png').resize((243, 70)), 'float32')
-        rect = np.array(Image.open('Assets/Rectangle.png'), 'float32') * 0.4
+        rect = np.array(Image.open('Assets/Rectangle.png'), 'float32')
+        rect[:,:,:3] = 0
+        rect[:,:,3] *= 1.2
 
         bg = np.array(self.background)
         self.blend(bg, title, (self.W//2, self.H//8-40), 'add')
         self.blend(bg, self.light, (self.W//2-80, self.H//2), 'add')
         self.blend(bg, self.light, (self.W//2+50, self.H//2), 'add')
         self.blend(bg, panel, (self.W//2, self.H//2+25), 'alpha')
-        self.blend(bg, rect, (self.W*2//3 - 20, self.H*2//5), 'add')
+        self.blend(bg, rect, (self.W*2//3 - 20, self.H*2//5 + 10), 'alpha')
         self.temp_bg = np.clip(bg, 0, 255)
 
         self.button = np.array(button)
@@ -142,6 +145,8 @@ class Project(Frame):
             Coords(self.W*2//7-10, 135 + 90 * i, *dims)
             for i in range(5)
             ]
+
+        self.selectedButton = None
 
 
     def start(self) -> None:
@@ -255,6 +260,29 @@ class Project(Frame):
                                          font=('Times', 16 if i == 1 else 18))
                       for i in range(len(self.buttons))]
 
+        # Use the docstrings as description
+        x = self.d.winfo_pointerx() - self.d.winfo_rootx()
+        y = self.d.winfo_pointery() - self.d.winfo_rooty()
+
+        
+        for i in range(len(self.buttons)):
+            if self.selected(x, y, self.buttonPos[i].bounds):
+                self.selectedButton = (i, texts[i])
+
+        if self.selectedButton is not None:
+            if self.selectedButton[0] == 4:
+                t = 'Human player: You!'
+            else:
+                t = getattr(hm_players, self.selectedButton[1]).__doc__
+            self.texts.append(
+                self.d.create_text(self.W//2 - 20, self.H//4 - 25,
+                                   text=t,
+                                   fill='#fff',
+                                   anchor=N + W,
+                                   font=('Times', 11),
+                                   width=340,
+                                   )#wrap='word')
+                )
         self.canvasItems = self.texts
 
 
