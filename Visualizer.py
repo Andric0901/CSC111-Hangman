@@ -118,7 +118,8 @@ class Project(Frame):
         """Opens image assets used in AI selection menu"""
         panel = np.array(Image.open('Assets/Panel.png'), 'float32')
         title = np.array(Image.open('Assets/Title_select.png'), 'float32')
-        button = np.array(Image.open('Assets/Button2.png').resize((243, 70)), 'float32')
+        buttonImg = Image.open('Assets/Button2.png').resize((243, 61))#, Image.BILINEAR)
+        button = np.array(buttonImg, 'float32')
         rect = np.array(Image.open('Assets/Rectangle.png'), 'float32')
         rect[:,:,:3] = 0
         rect[:,:,3] *= 1.2
@@ -131,19 +132,22 @@ class Project(Frame):
         self.blend(bg, rect, (self.W*2//3 - 20, self.H*2//5 + 10), 'alpha')
         self.temp_bg = np.clip(bg, 0, 255)
 
+        # Number of buttons / player types
+        NB = 7
+
         self.button = np.array(button)
-        self.buttons = [np.array(button) for _ in range(5)]
+        self.buttons = [np.array(button) for _ in range(NB)]
 
         symbols = np.array(Image.open('Assets/Symbols.png'), 'float32')
         self.symbolImg = symbols
         self.symbols = [
-            symbols[60*i:60*(i+1)] for i in range(5)
+            symbols[60*i:60*(i+1)] for i in range(NB)
             ]
 
         dims = (120, 35)
         self.buttonPos = [
-            Coords(self.W*2//7-10, 135 + 90 * i, *dims)
-            for i in range(5)
+            Coords(self.W*2//7-10, 118 + 69 * i, *dims)
+            for i in range(NB)
             ]
 
         self.selectedButton = None
@@ -252,12 +256,13 @@ class Project(Frame):
         self.clearCanvas()
 
         texts = ['RandomPlayer', 'RandomGraphPlayer', 'GraphNextPlayer',
+                 'GraphPrevPlayer', 'GraphAdjPlayer',
                  'FrequentPlayer', 'Human Player']
         self.texts = [self.d.create_text(self.buttonPos[i].pos[0] - 58,
                                          self.buttonPos[i].pos[1],
                                          text=texts[i], fill='#fff',
                                          anchor=W,
-                                         font=('Times', 16 if i == 1 else 18))
+                                         font=('Times', 15 if i == 1 else 17))
                       for i in range(len(self.buttons))]
 
         # Use the docstrings as description
@@ -270,8 +275,10 @@ class Project(Frame):
                 self.selectedButton = (i, texts[i])
 
         if self.selectedButton is not None:
-            if self.selectedButton[0] == 4:
+            if self.selectedButton[0] == 6:
                 t = 'Human player: You!'
+            elif self.selectedButton[0] == 4:
+                t = 'Not implemented!'
             else:
                 t = getattr(hm_players, self.selectedButton[1]).__doc__
             self.texts.append(
