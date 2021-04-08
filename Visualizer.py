@@ -117,7 +117,7 @@ class Project(Frame):
         """Opens image assets used in AI selection menu"""
         panel = np.array(Image.open('Assets/Panel.png'), 'float32')
         title = np.array(Image.open('Assets/Title_select.png'), 'float32')
-        button = np.array(Image.open('Assets/Button2.png'), 'float32')
+        button = np.array(Image.open('Assets/Button2.png').resize((243, 70)), 'float32')
         rect = np.array(Image.open('Assets/Rectangle.png'), 'float32') * 0.4
 
         bg = np.array(self.background)
@@ -125,16 +125,21 @@ class Project(Frame):
         self.blend(bg, self.light, (self.W//2-80, self.H//2), 'add')
         self.blend(bg, self.light, (self.W//2+50, self.H//2), 'add')
         self.blend(bg, panel, (self.W//2, self.H//2+25), 'alpha')
-        self.blend(bg, rect, (self.W*6//9, self.H*2//5), 'add')
+        self.blend(bg, rect, (self.W*2//3 - 20, self.H*2//5), 'add')
         self.temp_bg = np.clip(bg, 0, 255)
 
         self.button = np.array(button)
         self.buttons = [np.array(button) for _ in range(5)]
 
+        symbols = np.array(Image.open('Assets/Symbols.png'), 'float32')
+        self.symbolImg = symbols
+        self.symbols = [
+            symbols[60*i:60*(i+1)] for i in range(5)
+            ]
 
-        dims = (130, 40)
+        dims = (120, 35)
         self.buttonPos = [
-            Coords(self.W*2//7-10, 132 + 96 * i, *dims)
+            Coords(self.W*2//7-10, 135 + 90 * i, *dims)
             for i in range(5)
             ]
 
@@ -220,11 +225,13 @@ class Project(Frame):
     def renderSelect(self) -> None:
         """Render the AI selection screen"""
         self.totFrames += 1
-        
+
         frame = np.array(self.temp_bg)
 
         for i in range(len(self.buttons)):
-            self.blend(frame, self.buttons[i], self.buttonPos[i].pos, 'alpha')
+            px, py = self.buttonPos[i].pos
+            self.blend(frame, self.buttons[i], (px, py), 'alpha')
+            self.blend(frame, self.symbols[i], (px - 92, py), 'alpha')
 
         # Blend cursor
         mx = max(0, min(self.W, self.d.winfo_pointerx() - self.d.winfo_rootx()))
@@ -238,7 +245,18 @@ class Project(Frame):
         self.d.itemconfigure(self.finalRender, image=self.cf)
 
         self.clearCanvas()
-        
+
+        texts = ['RandomPlayer', 'RandomGraphPlayer', 'GraphNextPlayer',
+                 'FrequentPlayer', 'Human Player']
+        self.texts = [self.d.create_text(self.buttonPos[i].pos[0] - 58,
+                                         self.buttonPos[i].pos[1],
+                                         text=texts[i], fill='#fff',
+                                         anchor=W,
+                                         font=('Times', 16 if i == 1 else 18))
+                      for i in range(len(self.buttons))]
+
+        self.canvasItems = self.texts
+
 
     def updateCanvas(self) -> None:
         x = self.d.winfo_pointerx() - self.d.winfo_rootx()
