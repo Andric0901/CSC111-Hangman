@@ -272,6 +272,7 @@ class FrequentPlayer(hangman.Player):
     #       The GameGraph that this player uses to make its guesses. If None, then this
     #       player just makes random guesses.
     _graph: Optional[GameGraph]
+    _dict: Optional[enchant.Dict]
 
     def __init__(self, graph: GameGraph) -> None:
         """Initialize this player.
@@ -281,6 +282,7 @@ class FrequentPlayer(hangman.Player):
         """
         self._graph = graph
         self._visited_characters = set()
+        self._dict = enchant.Dict("en_US")
 
     def make_guess(self, game: hangman.Hangman, previous_guess: Optional[str],
                    can_guess_word: bool = False) -> str:
@@ -299,7 +301,7 @@ class FrequentPlayer(hangman.Player):
         if can_guess_word and num_unknown <= 0.4 * len(guess_status):
             current_word = ''.join([char for char in guess_status if char != '?'])
             visited_character = self._visited_characters
-            suggested_word = _suggest_valid_word(current_word, visited_character, game)
+            suggested_word = _suggest_valid_word(current_word, visited_character, game, self._dict)
             if suggested_word == '':
                 return self._make_guess_body()
             else:
@@ -324,17 +326,16 @@ class FrequentPlayer(hangman.Player):
 
 
 def _suggest_valid_word(current_word: str, visited_characters: set,
-                        game: hangman.Hangman) -> str:
+                        game: hangman.Hangman, word_dict: enchant.Dict) -> str:
     """Return a suggested word based on the current_word (which should be incomplete /
     misspelled). Return an empty string if there are no valid suggestions.
 
     The returned word will NOT be in the player._visited_character set.
     """
-    d = enchant.Dict("en_US")
     guess_status_sequence = [char for char in game.get_guess_status()]
     given_word_length = len(guess_status_sequence)
     chosen_word = ''
-    all_suggested_words = d.suggest(current_word)
+    all_suggested_words = word_dict.suggest(current_word)
     for word in all_suggested_words:
         if not game.is_valid_word(word):
             continue
@@ -370,6 +371,10 @@ if __name__ == "__main__":
     g = load_word_bank('valid_words_large.txt')
     h = hangman.Hangman()
 
+    import time
+    start = time.perf_counter()
+    count = 0
+
     # random_p = RandomPlayer()
     # for _ in range(100):
     #     print(hangman.run_game(random_p))
@@ -379,6 +384,10 @@ if __name__ == "__main__":
     for _ in range(100):
         print(hangman.run_game(frequent_p, can_guess_word=True))
         frequent_p._visited_characters = set()
+        count += 1
+        if time.perf_counter() - start > 10:
+            print(count)
+            break
     # print(hangman.run_game(frequent_p, can_guess_word=True))
     # random_graph_p = RandomGraphPlayer(g)
     # for _ in range(100):
