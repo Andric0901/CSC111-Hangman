@@ -1,11 +1,14 @@
 """Simple Hangman Game.
 
+# TODO: move this to main.py
+
 Installation instructions (see requirements.txt):
 
     - Upgrade PIP to the latest version
     - Install PyYAML (pip install pyyaml)
     - Install numpy (pip install numpy)
     - Install Pillow (pip install Pillow)
+    - Install pyenchant (pip install pyenchant)
 """
 from __future__ import annotations
 from typing import Optional
@@ -212,9 +215,6 @@ class Hangman:
             self.guess_character(input_)
         else:
             self.guess_word(input_)
-
-    # TODO: Make general run_game(s) methods
-    #       for better usage
 
 
 class EmptyWordError(Exception):

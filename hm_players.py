@@ -187,6 +187,8 @@ class GraphNextPlayer(hangman.Player):
 
         can_guess_word determines whether the given AI Player can guess the full word.
         """
+        # TODO: Since I'm not very aware of how this AI works, maybe
+        #       can you try to implement this AI to guess the full word?
         status = game.get_guess_status()
         if status == '?' * len(status):
             # Beginning, choose most common character
@@ -352,9 +354,9 @@ def _is_valid_sequence(suggested_sequence: list[str], current_sequence: list[str
     current_sequence are '?'.
 
     Preconditions:
-        - len(correct_sequence) == len(given_sequence)
-        - all({isinstance(char, str) for char in correct_sequence})
-        - all({isinstance(char, str) for char in given_sequence})
+        - len(suggested_sequence) == len(current_sequence)
+        - all({isinstance(char, str) for char in current_sequence})
+        - all({isinstance(char, str) for char in suggested_sequence})
     """
     for i in range(len(suggested_sequence)):
         if current_sequence[i] == '?':
@@ -369,29 +371,29 @@ if __name__ == "__main__":
     h = hangman.Hangman()
 
     # random_p = RandomPlayer()
-    # for _ in range(500000):
+    # for _ in range(100):
     #     print(hangman.run_game(random_p))
     #     random_p._visited_characters = set()
     #
     frequent_p = FrequentPlayer(g)
-    for _ in range(500000):
+    for _ in range(100):
         print(hangman.run_game(frequent_p, can_guess_word=True))
         frequent_p._visited_characters = set()
     # print(hangman.run_game(frequent_p, can_guess_word=True))
     # random_graph_p = RandomGraphPlayer(g)
-    # for _ in range(500000):
+    # for _ in range(100):
     #     print(hangman.run_game(random_graph_p))
     #     random_graph_p._visited_characters = set()
     #
     # graph_next_p = GraphNextPlayer(g)
-    # for _ in range(500000):
+    # for _ in range(100):
     #     # TODO: if testing GraphNextPlayer with this code,
     #     #       comment out 3 print statements inside GraphNextPlayer.make_guess()
     #     print(hangman.run_game(graph_next_p))
     #     graph_next_p._visited_characters = set()
 
     # graph_prev_p = GraphPrevPlayer(g)
-    # for _ in range(500000):
+    # for _ in range(100):
     #     # TODO: if testing graph_prev_p with this code,
     #     #       comment out 3 print statements inside GraphNextPlayer.make_guess()
     #     print(hangman.run_game(graph_prev_p))
