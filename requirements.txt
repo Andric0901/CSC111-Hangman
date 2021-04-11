@@ -1,3 +1,5 @@
 pyyaml
 numpy
 pillow
+python-ta
+pyenchant

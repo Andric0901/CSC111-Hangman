@@ -7,6 +7,7 @@ Installation instructions (see requirements.txt):
     - Install numpy (pip install numpy)
     - Install Pillow (pip install Pillow)
 """
+from __future__ import annotations
 from typing import Optional
 import random
 
@@ -18,7 +19,7 @@ class Hangman:
     """A class representing a state of a game of Hangman.
 
     Public instance attributes:
-        - TOTAL_TRIES: an int representing total tries allowed in a game.
+        - total_tries: an int representing total tries allowed in a game.
 
     Private instance attributes:
         - _chosen_word: a list representing the chosen word,
@@ -32,7 +33,7 @@ class Hangman:
     Representation invariant:
         - len(Hangman._guessed_status) == len(Hangman._chosen_word)
     """
-    TOTAL_TRIES = 10
+    total_tries: int = 10
 
     _chosen_word: list[str] = None
     _guess_status: list[str] = None
@@ -42,7 +43,6 @@ class Hangman:
 
     def __init__(self) -> None:
         """Initializes the Hangman variable."""
-        pass
 
     def get_chosen_word(self) -> str:
         """Return the chosen word as a string.
@@ -75,7 +75,7 @@ class Hangman:
     def set_tries(self, tries: int) -> None:
         """Set a new number of tries (mutates self._tries_left and self._total_tries)."""
         self._tries_left = tries
-        self.TOTAL_TRIES = tries
+        self.total_tries = tries
 
     def is_valid_word(self, word: Optional[str]) -> bool:
         """Return whether the given word is a valid word.
@@ -126,8 +126,8 @@ class Hangman:
             return 1
         distinct = len(set(self._chosen_word))
 
-        return bonus_weight * max(0, 1 - self._count / distinct) \
-               + (1 - bonus_weight) * min(1, distinct / self._count)
+        return bonus_weight * max(0.0, 1 - self._count / distinct) + \
+            (1 - bonus_weight) * min(1.0, distinct / self._count)
 
     def word_is_empty(self) -> bool:
         """Return whether the chosen_word is None (i.e., empty and not initialized)."""
@@ -220,7 +220,6 @@ class Hangman:
 class EmptyWordError(Exception):
     """Raised when a guess is attempted on an empty word
     (i.e., a word that has not yet been initialized)."""
-    pass
 
 
 class Player:
@@ -229,16 +228,19 @@ class Player:
     This class can be subclassed to implement different strategies for playing Hangman.
     """
     # Private instance attribute
-    #   - : a set representing the characters that have already been guessed.
+    #   - : a set representing the characters (or words) that have already been guessed.
     #       No AI should repeat the guesses; each AI Player will use this instance variable
     #       to exclude the duplicate guesses.
-    _visited_characters = set()
+    _visited_characters: set = set()
 
-    def make_guess(self, game: Hangman, previous_guess: Optional[str]) -> str:
+    def make_guess(self, game: Hangman, previous_guess: Optional[str],
+                   can_guess_word: bool = False) -> str:
         """Make a guess given the current game.
 
         previous_guess is the player's most recently guessed character, or None if no guesses
         have been made.
+
+        can_guess_word determines whether the given AI Player can guess the full word.
         """
         raise NotImplementedError
 
@@ -263,7 +265,8 @@ def run_games(n: int, white: Player, black: Player,
 
 
 def run_game(player: Player, word: str = None,
-             verbose: bool = False) -> tuple[float, bool, list[str], str]:
+             verbose: bool = False, can_guess_word: bool = False) -> \
+        tuple[float, bool, list[str], str]:
     """Run a Hangman game.
 
     Return a tuple containing the efficiency score, a bool representing whether
@@ -294,7 +297,7 @@ def run_game(player: Player, word: str = None,
     while not hangman.game_is_finished():
         user_guess = None
         while not hangman.is_valid_word(user_guess):
-            user_guess = player.make_guess(hangman, previous_character)
+            user_guess = player.make_guess(hangman, previous_character, can_guess_word)
 
         hangman.make_guess(user_guess)
         if verbose:
@@ -385,3 +388,15 @@ if __name__ == "__main__":
     state = run_game(player, 'interesting', verbose=True)
     print('Won' if state[1] else 'Lost')
     print('Word:', state[3])
+
+    # import doctest
+    # doctest.testmod()
+    #
+    # import python_ta.contracts
+    # python_ta.contracts.check_all_contracts()
+    # python_ta.check_all(config={
+    #     'extra-imports': ['random', 'hm_players'],
+    #     'allowed-io': ['open', 'print'],
+    #     'max-line-length': 100,
+    #     'disable': ['E1136']
+    # })

@@ -269,7 +269,7 @@ class Project(Frame):
         x = self.d.winfo_pointerx() - self.d.winfo_rootx()
         y = self.d.winfo_pointery() - self.d.winfo_rooty()
 
-        
+
         for i in range(len(self.buttons)):
             if self.selected(x, y, self.buttonPos[i].bounds):
                 self.selectedButton = (i, texts[i])

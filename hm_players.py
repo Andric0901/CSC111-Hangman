@@ -7,23 +7,24 @@ Brief explanation to each AI player:
     - GraphPrevPlayer: if applicable, guesses the previous character in the given GameGraph
     - FrequentPlayer: only guesses the frequently guessed characters
 """
-
+from __future__ import annotations
 import random
-from typing import Optional
+from typing import Optional, Any
+import enchant
 
-import hm_game_graph
+from hm_game_graph import _WeightedVertex, GameGraph
 import hangman
 
 VALID_CHARACTERS = 'abcdefghijklmnopqrstuvwxyz'
 
 
-def load_word_bank(games_file: str, order: str = 'next') -> hm_game_graph.GameGraph:
+def load_word_bank(games_file: str, order: str = 'next') -> GameGraph:
     """Create a word bank (i.e., a game graph) based on games_file.
 
     Preconditions:
         - order in {'next', 'prev', 'both'}
     """
-    graph = hm_game_graph.GameGraph()
+    graph = GameGraph()
     with open(games_file) as file:
         for row in file:
             if order != 'prev':
@@ -37,11 +38,14 @@ def load_word_bank(games_file: str, order: str = 'next') -> hm_game_graph.GameGr
 class RandomPlayer(hangman.Player):
     """A Hangman AI whose strategy is always picking a random character."""
 
-    def make_guess(self, game: hangman.Hangman, previous_character: Optional[str]) -> str:
+    def make_guess(self, game: hangman.Hangman, previous_character: Optional[str],
+                   can_guess_word: bool = False) -> str:
         """Make a guess given the current game.
 
         previous_character is the player's most recently guessed character, or None if no guesses
         have been made.
+
+        This AI will never guess a full word; the parameter can_guess_word will never be used.
         """
         chosen_character = random.choice(VALID_CHARACTERS)
         while chosen_character in self._visited_characters:
@@ -51,7 +55,7 @@ class RandomPlayer(hangman.Player):
 
 
 class RandomGraphPlayer(hangman.Player):
-    """A hangman player that plays randomly based on a give GameGraph.
+    """A Hangman player that plays randomly based on a give GameGraph.
 
     This player uses a game graph to make guesses as the game is played.
     On its turn:
@@ -65,9 +69,9 @@ class RandomGraphPlayer(hangman.Player):
     #   - _game_graph:
     #       The GameGraph that this player uses to make its guesses. If None, then this
     #       player just makes random guesses.
-    _graph: Optional[hm_game_graph.GameGraph]
+    _graph: Optional[GameGraph]
 
-    def __init__(self, graph: hm_game_graph.GameGraph) -> None:
+    def __init__(self, graph: GameGraph) -> None:
         """Initialize this player.
 
         Preconditions:
@@ -76,57 +80,77 @@ class RandomGraphPlayer(hangman.Player):
         self._graph = graph
         self._visited_characters = set()
 
-    def make_guess(self, game: hangman.Hangman, previous_character: Optional[str]) -> str:
+    def make_guess(self, game: hangman.Hangman, previous_character: Optional[str],
+                   can_guess_word: bool = False) -> str:
         """Make a guess given the current game.
 
         previous_guess is the player's most recently guessed character, or None if no guesses
         have been made.
+
+        This AI will never guess a full word; the parameter can_guess_word will never be used.
         """
         if previous_character is None:
             # First guess, choose randomly among all the vertices
-            all_items = self._graph.get_all_vertices()
-            chosen_item = random.choice(list(all_items))
-            while chosen_item in self._visited_characters:
-                chosen_item = random.choice(list(all_items))
-            self._visited_characters.add(chosen_item)
-            return chosen_item
+            return self._random_vertex_guess()
         else:
             # Not first guess, makes random guesses based on neighbours
             get_previous_vertex = self._graph.get_vertex_by_item(previous_character)
             all_neighbouring_vertices = [v for v in get_previous_vertex.neighbours]
             if len(all_neighbouring_vertices) == 0:
-                # If there are no neighbours (highly unlikely), guess randomly
-                all_characters_list = [char for char in VALID_CHARACTERS]
-                random_character = random.choice(all_characters_list)
-                while random_character in self._visited_characters:
-                    random_character = random.choice(all_characters_list)
-                self._visited_characters.add(random_character)
-                return random_character
+                # If there are no neighbours (highly unlikely), guess random character
+                return self._random_character_guess()
             else:
                 # If there are at least one neighbour, guess randomly among its neighbours
                 all_neighbouring_vertices_copy = all_neighbouring_vertices.copy()
                 chosen_vertex = random.choice(all_neighbouring_vertices_copy)
-                while True:
-                    if chosen_vertex.item not in self._visited_characters or \
-                            len(all_neighbouring_vertices_copy) == 0:
-                        break
-                    else:
-                        all_neighbouring_vertices_copy.remove(chosen_vertex)
-                        if len(all_neighbouring_vertices_copy) == 0:
-                            break
-                        else:
-                            chosen_vertex = random.choice(all_neighbouring_vertices_copy)
-
+                self._mutate_all_neighbouring_vertices(chosen_vertex,
+                                                       all_neighbouring_vertices_copy)
                 if (len(all_neighbouring_vertices_copy)) == 0:
-                    all_items = self._graph.get_all_vertices()
-                    chosen_item = random.choice(list(all_items))
-                    while chosen_item in self._visited_characters:
-                        chosen_item = random.choice(list(all_items))
-                    self._visited_characters.add(chosen_item)
-                    return chosen_item
+                    return self._random_vertex_guess()
                 else:
                     self._visited_characters.add(chosen_vertex.item)
                     return chosen_vertex.item
+
+    # The following three private methods are to satisfy PythonTA; we have divided up the
+    # make_guess method above with three helper methods to simplify large nested
+    # if-else statements.
+
+    def _random_vertex_guess(self) -> Any:
+        """Return a random character among all the vertices."""
+        all_items = self._graph.get_all_vertices()
+        chosen_item = random.choice(list(all_items))
+        while chosen_item in self._visited_characters:
+            chosen_item = random.choice(list(all_items))
+        self._visited_characters.add(chosen_item)
+        return chosen_item
+
+    def _random_character_guess(self) -> Any:
+        """Return a purely random character from VALID_CHARACTERS."""
+        all_characters_list = [char for char in VALID_CHARACTERS]
+        random_character = random.choice(all_characters_list)
+        while random_character in self._visited_characters:
+            random_character = random.choice(all_characters_list)
+        self._visited_characters.add(random_character)
+        return random_character
+
+    def _mutate_all_neighbouring_vertices(self, chosen_vertex: _WeightedVertex,
+                                          all_neighbouring_vertices_copy:
+                                          list[_WeightedVertex]) -> None:
+        """Mutate the all_neighbouring_vertices_copy.
+        Specifically, remove each vertex from this shallow copy until either the
+        chosen_vertex contains the wanted (valid) item, or all the elements of
+        all_neighbouring_vertices_copy have been removed.
+        """
+        while True:
+            if chosen_vertex.item not in self._visited_characters or \
+                    len(all_neighbouring_vertices_copy) == 0:
+                break
+            else:
+                all_neighbouring_vertices_copy.remove(chosen_vertex)
+                if len(all_neighbouring_vertices_copy) == 0:
+                    break
+                else:
+                    chosen_vertex = random.choice(all_neighbouring_vertices_copy)
 
 
 class GraphNextPlayer(hangman.Player):
@@ -143,9 +167,9 @@ class GraphNextPlayer(hangman.Player):
     #   - _game_graph:
     #       The GameGraph that this player uses to make its guesses. If None, then this
     #       player just makes random guesses.
-    _graph: Optional[hm_game_graph.GameGraph]
+    _graph: Optional[GameGraph]
 
-    def __init__(self, graph: hm_game_graph.GameGraph) -> None:
+    def __init__(self, graph: GameGraph) -> None:
         """Initialize this player.
 
         Preconditions:
@@ -154,11 +178,14 @@ class GraphNextPlayer(hangman.Player):
         self._graph = graph
         self._visited_characters = set()
 
-    def make_guess(self, game: hangman.Hangman, previous_guess: Optional[str]) -> str:
+    def make_guess(self, game: hangman.Hangman, previous_guess: Optional[str],
+                   can_guess_word: bool = False) -> str:
         """Make a guess given the current game.
 
         previous_guess is the player's most recently guessed character, or None if no guesses
         have been made.
+
+        can_guess_word determines whether the given AI Player can guess the full word.
         """
         status = game.get_guess_status()
         if status == '?' * len(status):
@@ -242,9 +269,9 @@ class FrequentPlayer(hangman.Player):
     #   - _game_graph:
     #       The GameGraph that this player uses to make its guesses. If None, then this
     #       player just makes random guesses.
-    _graph: Optional[hm_game_graph.GameGraph]
+    _graph: Optional[GameGraph]
 
-    def __init__(self, graph: hm_game_graph.GameGraph) -> None:
+    def __init__(self, graph: GameGraph) -> None:
         """Initialize this player.
 
         Preconditions:
@@ -253,12 +280,34 @@ class FrequentPlayer(hangman.Player):
         self._graph = graph
         self._visited_characters = set()
 
-    def make_guess(self, game: hangman.Hangman, previous_guess: Optional[str]) -> str:
+    def make_guess(self, game: hangman.Hangman, previous_guess: Optional[str],
+                   can_guess_word: bool = False) -> str:
         """Make a guess given the current game.
 
         previous_guess is the player's most recently guessed character, or None if no guesses
         have been made.
+
+        can_guess_word determines whether the given AI Player can guess the full word.
         """
+        guess_status = game.get_guess_status()
+        num_unknown = len([char for char in guess_status if char == '?'])
+        # The AI only attempts to guess the full word if can_guess_word is True
+        # and the number of unknown characters (i.e., '?') is less than or equal to
+        # 40% of the number of total characters.
+        if can_guess_word and num_unknown <= 0.4 * len(guess_status):
+            current_word = ''.join([char for char in guess_status if char != '?'])
+            visited_character = self._visited_characters
+            suggested_word = _suggest_valid_word(current_word, visited_character, game)
+            if suggested_word == '':
+                return self._make_guess_body()
+            else:
+                self._visited_characters.add(suggested_word)
+                return suggested_word
+        else:
+            return self._make_guess_body()
+
+    def _make_guess_body(self) -> str:
+        """The main function body for the make_guess method above to simplify the code."""
         all_items = self._graph.get_all_vertices()
         max_weight = -1
         max_item = None
@@ -268,17 +317,54 @@ class FrequentPlayer(hangman.Player):
                 if item not in self._visited_characters:
                     max_weight = weight
                     max_item = item
-        if max_item is None:
-            # TODO: All items are guessed... Does this case ever happen?
-            ...
-        else:
-            # print((max_item, max_weight))
-            self._visited_characters.add(max_item)
-            return max_item
+        self._visited_characters.add(max_item)
+        return max_item
+
+
+def _suggest_valid_word(current_word: str, visited_characters: set,
+                        game: hangman.Hangman) -> str:
+    """Return a suggested word based on the current_word (which should be incomplete /
+    misspelled). Return an empty string if there are no valid suggestions.
+
+    The returned word will NOT be in the player._visited_character set.
+    """
+    d = enchant.Dict("en_US")
+    guess_status_sequence = [char for char in game.get_guess_status()]
+    given_word_length = len(guess_status_sequence)
+    chosen_word = ''
+    all_suggested_words = d.suggest(current_word)
+    for word in all_suggested_words:
+        if not game.is_valid_word(word):
+            continue
+        suggested_sequence = [char for char in word]
+        if word not in visited_characters and len(word) == given_word_length and \
+                _is_valid_sequence(suggested_sequence, guess_status_sequence):
+            chosen_word = word
+            break
+    return chosen_word
+
+
+def _is_valid_sequence(suggested_sequence: list[str], current_sequence: list[str]) -> bool:
+    """Return whether suggested_sequence is a valid character sequence.
+
+    A character sequence is valid when all characters in suggested_sequence exactly match the
+    corresponding characters in current_sequence at the given indices, or such characters in
+    current_sequence are '?'.
+
+    Preconditions:
+        - len(correct_sequence) == len(given_sequence)
+        - all({isinstance(char, str) for char in correct_sequence})
+        - all({isinstance(char, str) for char in given_sequence})
+    """
+    for i in range(len(suggested_sequence)):
+        if current_sequence[i] == '?':
+            continue
+        elif current_sequence[i] != suggested_sequence[i]:
+            return False
+    return True
 
 
 if __name__ == "__main__":
-    import hangman
     g = load_word_bank('valid_words_large.txt')
     h = hangman.Hangman()
 
@@ -287,11 +373,11 @@ if __name__ == "__main__":
     #     print(hangman.run_game(random_p))
     #     random_p._visited_characters = set()
     #
-    # frequent_p = FrequentPlayer(g)
-    # for _ in range(500000):
-    #     print(hangman.run_game(frequent_p))
-    #     frequent_p._visited_characters = set()
-    #
+    frequent_p = FrequentPlayer(g)
+    for _ in range(500000):
+        print(hangman.run_game(frequent_p, can_guess_word=True))
+        frequent_p._visited_characters = set()
+    # print(hangman.run_game(frequent_p, can_guess_word=True))
     # random_graph_p = RandomGraphPlayer(g)
     # for _ in range(500000):
     #     print(hangman.run_game(random_graph_p))
@@ -310,3 +396,15 @@ if __name__ == "__main__":
     #     #       comment out 3 print statements inside GraphNextPlayer.make_guess()
     #     print(hangman.run_game(graph_prev_p))
     #     graph_prev_p._visited_characters = set()
+
+    # import doctest
+    # doctest.testmod()
+    #
+    # import python_ta.contracts
+    # python_ta.contracts.check_all_contracts()
+    # python_ta.check_all(config={
+    #     'extra-imports': ['hm_game_graph', 'hangman', 'random'],
+    #     'allowed-io': ['open', 'print'],
+    #     'max-line-length': 100,
+    #     'disable': ['E1136']
+    # })

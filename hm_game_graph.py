@@ -129,9 +129,18 @@ class GameGraph:
             self.add_vertex(c)
 
         for i in range(len(characters) - 1):
-            self.accumulate_edge(characters[i], characters[i+1], 1)
+            self.accumulate_edge(characters[i], characters[i + 1], 1)
 
 
-if __name__ == '__main__':
-    import doctest
-    doctest.testmod()
+# if __name__ == '__main__':
+#     import doctest
+#     doctest.testmod()
+#
+#     import python_ta.contracts
+#     python_ta.contracts.check_all_contracts()
+#     python_ta.check_all(config={
+#         'extra-imports': [],
+#         'allowed-io': ['open', 'print'],
+#         'max-line-length': 100,
+#         'disable': ['E1136']
+#     })
