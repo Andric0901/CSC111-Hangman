@@ -204,7 +204,6 @@ class Project(Frame):
         self.d.bind('<Button-1>', self.clicked)
         self.finalRender = self.d.create_image((self.W/2, self.H/2))
 
-
     def renderMenu(self) -> None:
         """Render the main menu"""
         self.totFrames += 1
@@ -240,21 +239,8 @@ class Project(Frame):
         for i in range(len(self.buttons)):
             self.blend(frame, self.buttons[i], self.buttonPos[i].pos, 'alpha')
 
-        # Blend cursor
-        mx = max(0, min(self.W, self.d.winfo_pointerx() - self.d.winfo_rootx()))
-        my = max(0, min(self.H, self.d.winfo_pointery() - self.d.winfo_rooty()))
-        self.blend(frame, self.cursor, (mx + 20, my + 20), 'alpha')
-
-        # Convert numpy array to image
-        frame[:,:,3] = 255
-        # See https://github.com/numpy/numpy/issues/14281
-        # np.clip(frame, 0, 255, out=frame)
-        np.maximum(frame, 0, out=frame)
-        np.minimum(frame, 255, out=frame)
-        i = Image.fromarray(frame.astype("uint8"))
-        self.cf = ImageTk.PhotoImage(i)
-        self.d.itemconfigure(self.finalRender, image=self.cf)
-
+        self.blendCursor(frame)
+        self.displayImage(frame)
         self.clearCanvas()
 
         # Add text to buttons
@@ -276,17 +262,8 @@ class Project(Frame):
             self.blend(frame, self.buttons[i], (px, py), 'alpha')
             self.blend(frame, self.symbols[i], (px - 92, py), 'alpha')
 
-        # Blend cursor
-        mx = max(0, min(self.W, self.d.winfo_pointerx() - self.d.winfo_rootx()))
-        my = max(0, min(self.H, self.d.winfo_pointery() - self.d.winfo_rooty()))
-        self.blend(frame, self.cursor, (mx + 20, my + 20), 'alpha')
-
-        np.maximum(frame, 0, out=frame)
-        np.minimum(frame, 255, out=frame)
-        i = Image.fromarray(frame.astype("uint8"))
-        self.cf = ImageTk.PhotoImage(i)
-        self.d.itemconfigure(self.finalRender, image=self.cf)
-
+        self.blendCursor(frame)
+        self.displayImage(frame)
         self.clearCanvas()
 
         texts = ['RandomPlayer', 'RandomGraphPlayer', 'GraphNextPlayer',
@@ -365,17 +342,8 @@ class Project(Frame):
 ##            self.blend(frame, self.symbols[i], (px - 92, py), 'alpha')
         self.blend(frame, self.gameGraph, (self.W//4, self.H*3//4), 'alpha')
 
-        # Blend cursor
-        mx = max(0, min(self.W, self.d.winfo_pointerx() - self.d.winfo_rootx()))
-        my = max(0, min(self.H, self.d.winfo_pointery() - self.d.winfo_rooty()))
-        self.blend(frame, self.cursor, (mx + 20, my + 20), 'alpha')
-
-        np.maximum(frame, 0, out=frame)
-        np.minimum(frame, 255, out=frame)
-        i = Image.fromarray(frame.astype("uint8"))
-        self.cf = ImageTk.PhotoImage(i)
-        self.d.itemconfigure(self.finalRender, image=self.cf)
-
+        self.blendCursor(frame)
+        self.displayImage(frame)
         self.clearCanvas()
 
         self.texts = []
@@ -425,11 +393,9 @@ class Project(Frame):
             if self.selected(evt.x, evt.y, self.buttonPos[1].bounds):
                 print("Button 1 pressed")
             if self.selected(evt.x, evt.y, self.buttonPos[2].bounds):
-                print("Button 2 pressed")
                 self.window = 'Select'
                 self.loadSelectionAssets()
             if self.selected(evt.x, evt.y, self.buttonPos[3].bounds):
-                print("Quit")
                 self.root.destroy()
 
         elif self.window == 'Select':
@@ -438,6 +404,22 @@ class Project(Frame):
                     self.window = 'Visualize'
                     self.loadVisualizeAssets()
                     return
+
+    def displayImage(self, frame: np.array) -> None:
+        """Converts frame into Tk image and displays it on the canvas
+        MUTATES frame to ensure no uint8 overflow.
+        """
+        frame[:,:,3] = 255
+        np.minimum(frame, 255, out=frame)
+        i = Image.fromarray(frame.astype("uint8"))
+        self.cf = ImageTk.PhotoImage(i)
+        self.d.itemconfigure(self.finalRender, image=self.cf)
+
+    def blendCursor(self, frame: np.array) -> None:
+        """Blends cursor image onto frame"""
+        mx = max(0, min(self.W, self.d.winfo_pointerx() - self.d.winfo_rootx()))
+        my = max(0, min(self.H, self.d.winfo_pointery() - self.d.winfo_rooty()))
+        self.blend(frame, self.cursor, (mx + 20, my + 20), 'alpha')
 
     def clearCanvas(self) -> None:
         """Deletes items in self.canvasItems from the canvas self.d"""
