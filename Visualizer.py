@@ -75,8 +75,7 @@ class Project(Frame):
         bg = Image.open('Assets/Background.jpg').convert('RGBA')
         self.background = np.array(bg, 'float32')
 
-        title = Image.open('Assets/Title.png')
-        self.title = np.array(title, 'float32')
+        self.title = np.array(Image.open('Assets/Title.png'), 'float32')
 
         graphic = Image.open('Assets/Hangman.png').resize((180, 150))
         self.graphic = 255 - np.array(graphic, 'float32')
@@ -93,11 +92,9 @@ class Project(Frame):
 
         self.lettersOffsets = ((np.random.random((8, 2)) - 0.5) * 400).astype('int')
 
-        names = Image.open('Assets/Names.png').convert('RGBA').resize((400, 36))
-        self.names = np.array(names, 'float32')
+        self.names = np.array(Image.open('Assets/Names.png'), 'float32')
 
-        button = Image.open('Assets/Button.png')
-        self.button = np.array(button, 'float32')
+        self.button = np.array(Image.open('Assets/Button.png'), 'float32')
 
         # Copy so we can change the intensity of each button individually
         self.buttons = [np.array(self.button),
@@ -113,8 +110,7 @@ class Project(Frame):
             Coords(self.W*7//9, self.H-180, *dims)
             ]
 
-        cursor = Image.open('Assets/Cursor.png').resize((53, 50))
-        self.cursor = np.clip(np.array(cursor, 'float32') * 1.8, None, 255)
+        self.cursor = np.array(Image.open('Assets/Cursor.png'), 'float32')
 
     def loadSelectionAssets(self) -> None:
         """Opens image assets used in AI selection menu"""
@@ -319,8 +315,6 @@ class Project(Frame):
         n = len(vn)
         circle = np.array(Image.open('Assets/Circle.png'), 'float32')
         node = np.array(Image.open('Assets/Node.png'), 'float32')
-        node[:,:,3] = node[:,:,0]
-        node[:,:,:3] = 255
         rad = 82
         off = int(circle.shape[0] / 2 - rad)
         for i in range(n):
