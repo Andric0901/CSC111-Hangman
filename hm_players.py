@@ -395,7 +395,7 @@ if __name__ == "__main__":
     #
     frequent_p = FrequentPlayer(g)
     for _ in range(100):
-        print(hangman.run_game(frequent_p, can_guess_word=True))
+        print(hangman.run_game(frequent_p))
         frequent_p._visited_characters = set()
         count += 1
         if time.perf_counter() - start > 10:
