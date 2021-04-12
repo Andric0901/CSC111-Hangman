@@ -36,16 +36,15 @@ def load_word_bank(games_file: str, order: str = 'next') -> GameGraph:
 
 
 class RandomPlayer(hangman.Player):
-    """A Hangman AI whose strategy is always picking a random character."""
+    """A Hangman AI whose strategy is always picking a random character.
+    This AI will never guess a full word.
+    """
 
-    def make_guess(self, game: hangman.Hangman, previous_character: Optional[str],
-                   can_guess_word: bool = False) -> str:
+    def make_guess(self, game: hangman.Hangman, previous_character: Optional[str]) -> str:
         """Make a guess given the current game.
 
         previous_character is the player's most recently guessed character, or None if no guesses
         have been made.
-
-        This AI will never guess a full word; the parameter can_guess_word will never be used.
         """
         chosen_character = random.choice(VALID_CHARACTERS)
         while chosen_character in self._visited_characters:
@@ -64,6 +63,7 @@ class RandomGraphPlayer(hangman.Player):
         - If there are neighbours to the previously chosen vertex, choose a random one
         for the next guess
         - If there are no neighbours, the AI guesses randomly.
+    This AI will never guess a full word.
     """
     # Private Instance Attributes:
     #   - _game_graph:
@@ -80,14 +80,11 @@ class RandomGraphPlayer(hangman.Player):
         self._graph = graph
         self._visited_characters = set()
 
-    def make_guess(self, game: hangman.Hangman, previous_character: Optional[str],
-                   can_guess_word: bool = False) -> str:
+    def make_guess(self, game: hangman.Hangman, previous_character: Optional[str]) -> str:
         """Make a guess given the current game.
 
         previous_guess is the player's most recently guessed character, or None if no guesses
         have been made.
-
-        This AI will never guess a full word; the parameter can_guess_word will never be used.
         """
         if previous_character is None:
             # First guess, choose randomly among all the vertices
@@ -168,8 +165,9 @@ class GraphNextPlayer(hangman.Player):
     #       The GameGraph that this player uses to make its guesses. If None, then this
     #       player just makes random guesses.
     _graph: Optional[GameGraph]
+    _dict: Optional[enchant.Dict]
 
-    def __init__(self, graph: GameGraph) -> None:
+    def __init__(self, graph: GameGraph, can_guess_word: bool = False) -> None:
         """Initialize this player.
 
         Preconditions:
@@ -177,18 +175,15 @@ class GraphNextPlayer(hangman.Player):
         """
         self._graph = graph
         self._visited_characters = set()
+        self._dict = enchant.Dict('en_US')
+        self.can_guess_word = can_guess_word
 
-    def make_guess(self, game: hangman.Hangman, previous_guess: Optional[str],
-                   can_guess_word: bool = False) -> str:
+    def make_guess(self, game: hangman.Hangman, previous_guess: Optional[str]) -> str:
         """Make a guess given the current game.
 
         previous_guess is the player's most recently guessed character, or None if no guesses
         have been made.
-
-        can_guess_word determines whether the given AI Player can guess the full word.
         """
-        # TODO: Since I'm not very aware of how this AI works, maybe
-        #       can you try to implement this AI to guess the full word?
         status = game.get_guess_status()
         if status == '?' * len(status):
             # Beginning, choose most common character
@@ -200,6 +195,14 @@ class GraphNextPlayer(hangman.Player):
         if choice is not None:
             print('Adjacent', choice[1], end='  ')
             return choice[0]
+
+        # If most letters are known then guess entire word
+        num_unknown = status.count('?')
+        if self.can_guess_word and num_unknown <= 0.4 * len(status):
+            result = self.guess_word(game)
+            if result is not None:
+                print('Word      ', end='  ')
+                return result
 
         # Last resort, random guess
         print('Random    ', end='  ')
@@ -238,13 +241,25 @@ class GraphNextPlayer(hangman.Player):
         self._visited_characters.add(char)
         return char
 
+    def guess_word(self, game: hangman.Hangman) -> Optional[str]:
+        """Guess the entire word"""
+        status = game.get_guess_status()
+        current_word = status.replace('?', '')
+        visited_character = self._visited_characters
+        suggested_word = _suggest_valid_word(current_word, visited_character, game, self._dict)
+        if suggested_word == '':
+            return None
+        else:
+            self._visited_characters.add(suggested_word)
+            return suggested_word
+
 
 class GraphPrevPlayer(GraphNextPlayer):
     """This player is the counterpart to GraphNextPlayer.
     It guesses the letter before a known letter."""
 
     def adjacent_guess(self, game: hangman.Hangman) -> Optional[tuple[str, str]]:
-        """Guess the letter that comes after a known letter.
+        """Guess the letter that comes before a known letter.
         Returns (choice, s) where s is the known letter."""
         status = game.get_guess_status()
         for i in range(len(status) - 1):
@@ -274,7 +289,7 @@ class FrequentPlayer(hangman.Player):
     _graph: Optional[GameGraph]
     _dict: Optional[enchant.Dict]
 
-    def __init__(self, graph: GameGraph) -> None:
+    def __init__(self, graph: GameGraph, can_guess_word: bool = False) -> None:
         """Initialize this player.
 
         Preconditions:
@@ -282,24 +297,22 @@ class FrequentPlayer(hangman.Player):
         """
         self._graph = graph
         self._visited_characters = set()
-        self._dict = enchant.Dict("en_US")
+        self._dict = enchant.Dict('en_US')
+        self.can_guess_word = can_guess_word
 
-    def make_guess(self, game: hangman.Hangman, previous_guess: Optional[str],
-                   can_guess_word: bool = False) -> str:
+    def make_guess(self, game: hangman.Hangman, previous_guess: Optional[str]) -> str:
         """Make a guess given the current game.
 
         previous_guess is the player's most recently guessed character, or None if no guesses
         have been made.
-
-        can_guess_word determines whether the given AI Player can guess the full word.
         """
         guess_status = game.get_guess_status()
-        num_unknown = len([char for char in guess_status if char == '?'])
-        # The AI only attempts to guess the full word if can_guess_word is True
+        num_unknown = guess_status.count('?')
+        # The AI only attempts to guess the full word if self.can_guess_word is True
         # and the number of unknown characters (i.e., '?') is less than or equal to
         # 40% of the number of total characters.
-        if can_guess_word and num_unknown <= 0.4 * len(guess_status):
-            current_word = ''.join([char for char in guess_status if char != '?'])
+        if self.can_guess_word and num_unknown <= 0.4 * len(guess_status):
+            current_word = guess_status.replace('?', '')
             visited_character = self._visited_characters
             suggested_word = _suggest_valid_word(current_word, visited_character, game, self._dict)
             if suggested_word == '':

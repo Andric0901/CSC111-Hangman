@@ -226,21 +226,22 @@ class Player:
     """An abstract class representing a Hangman AI.
 
     This class can be subclassed to implement different strategies for playing Hangman.
+
+    can_guess_word determines whether the given AI Player can guess the full word.
     """
+    can_guess_word: bool = False
+
     # Private instance attribute
     #   - : a set representing the characters (or words) that have already been guessed.
     #       No AI should repeat the guesses; each AI Player will use this instance variable
     #       to exclude the duplicate guesses.
     _visited_characters: set = set()
 
-    def make_guess(self, game: Hangman, previous_guess: Optional[str],
-                   can_guess_word: bool = False) -> str:
+    def make_guess(self, game: Hangman, previous_guess: Optional[str]) -> str:
         """Make a guess given the current game.
 
         previous_guess is the player's most recently guessed character, or None if no guesses
         have been made.
-
-        can_guess_word determines whether the given AI Player can guess the full word.
         """
         raise NotImplementedError
 
@@ -265,7 +266,7 @@ def run_games(n: int, white: Player, black: Player,
 
 
 def run_game(player: Player, word: str = None,
-             verbose: bool = False, can_guess_word: bool = False) -> \
+             verbose: bool = False) -> \
         tuple[float, bool, list[str], str]:
     """Run a Hangman game.
 
@@ -297,7 +298,7 @@ def run_game(player: Player, word: str = None,
     while not hangman.game_is_finished():
         user_guess = None
         while not hangman.is_valid_word(user_guess):
-            user_guess = player.make_guess(hangman, previous_character, can_guess_word)
+            user_guess = player.make_guess(hangman, previous_character)
 
         hangman.make_guess(user_guess)
         if verbose:
@@ -382,10 +383,10 @@ if __name__ == "__main__":
     # player = hm_players.GraphNextPlayer(graph)
     # print('Running game with GraphNextPlayer')
     graph = hm_players.load_word_bank('Small.txt', 'prev')
-    player = hm_players.GraphPrevPlayer(graph)
+    player = hm_players.GraphPrevPlayer(graph, True)
     print('Running game with GraphPrevPlayer')
 
-    state = run_game(player, 'interesting', verbose=True)
+    state = run_game(player, 'snowflakes', verbose=True)
     print('Won' if state[1] else 'Lost')
     print('Word:', state[3])
 
