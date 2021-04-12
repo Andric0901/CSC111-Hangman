@@ -11,9 +11,11 @@ from tkinter import Frame, Tk, Canvas, N, E, S, W
 from PIL import Image, ImageTk, ImageDraw
 import numpy as np
 import time
-from math import sin
+from math import sin, cos, pi
 
+import hangman
 import hm_players
+import hm_game_graph
 
 f = ('Times', 32, 'bold')
 
@@ -144,13 +146,45 @@ class Project(Frame):
             symbols[60*i:60*(i+1)] for i in range(NB)
             ]
 
-        dims = (120, 35)
+        dims = (120, 32)
         self.buttonPos = [
             Coords(self.W*2//7-10, 118 + 69 * i, *dims)
             for i in range(NB)
             ]
 
         self.selectedButton = None
+
+    def loadVisualizeAssets(self) -> None:
+        """Opens image assets used in visualization screen"""
+        panel = np.array(Image.open('Assets/Panel.png'), 'float32')
+        title = np.array(Image.open('Assets/Title_visualize.png'), 'float32')
+        #buttonImg = Image.open('Assets/Button2.png').resize((243, 61))
+        #button = np.array(buttonImg, 'float32')
+        rects = np.array(Image.open('Assets/Rectangles.png'), 'float32')
+        rects[:,:,:3] = 0
+        rects[:,:,3] *= 0.6
+
+        bg = np.array(self.background)
+        self.blend(bg, title, (self.W//2, self.H//8-40), 'add')
+        self.blend(bg, self.light, (self.W//2-80, self.H//2), 'add')
+        self.blend(bg, self.light, (self.W//2+50, self.H//2), 'add')
+        self.blend(bg, panel, (self.W//2, self.H//2+25), 'alpha')
+        self.blend(bg, rects, (self.W//2 - 20, self.H//2 + 30), 'alpha')
+
+        self.graphic = 255 - self.graphic
+        self.graphic[:,:,3] = 255 - self.graphic[:,:,0]
+        self.blend(bg, self.graphic, (self.W//2, self.H//3), 'alpha')
+
+        self.charBox = np.array(Image.open('Assets/Character.png'), 'float32')
+        self.badge = np.array(Image.open('Assets/Badge.png'), 'float32')
+
+        playerSym = self.symbols[self.selectedButton[0]]
+        self.blend(bg, self.badge, (self.W//6 - 5, self.H//6 + 20), 'alpha')
+        self.blend(bg, playerSym, (self.W//6 - 5, self.H//6 + 20), 'alpha')
+
+        self.temp_bg = np.clip(bg, 0, 255)
+
+        self.startGame()
 
 
     def start(self) -> None:
@@ -282,14 +316,76 @@ class Project(Frame):
             else:
                 t = getattr(hm_players, self.selectedButton[1]).__doc__
             self.texts.append(
-                self.d.create_text(self.W//2 - 20, self.H//4 - 25,
-                                   text=t,
-                                   fill='#fff',
-                                   anchor=N + W,
-                                   font=('Times', 11),
-                                   width=340,
-                                   )#wrap='word')
+                self.d.create_text(
+                    self.W//2 - 20, self.H//4 - 25,
+                    text=t, fill='#fff', anchor=N + W,
+                    font=('Times', 11), width=340
+                    )
                 )
+        self.canvasItems = self.texts
+
+    def startGame(self) -> None:
+        """Initializes a Hangman game"""
+        order = 'next' if self.selectedButton[0] == 3 else 'prev'
+        graph = hm_players.load_word_bank('Small.txt', order)
+        playerClass = getattr(hm_players, self.selectedButton[1], None)
+        if playerClass is hm_players.RandomPlayer:
+            player = playerClass()
+            return
+
+        player = playerClass(graph)
+        self.gameGraph = self.renderGraph(graph)
+
+    def renderGraph(self, graph: hm_game_graph.GameGraph) -> np.array:
+        """Renders a graph with its nodes on a circle"""
+        vn = graph.get_all_vertices()
+        n = len(vn)
+        circle = np.array(Image.open('Assets/Circle.png'), 'float32')
+        node = np.array(Image.open('Assets/Node.png'), 'float32')
+        node[:,:,3] = node[:,:,0]
+        node[:,:,:3] = 255
+        rad = 82
+        off = int(circle.shape[0] / 2 - rad)
+        for i in range(n):
+            px = sin(2 * pi * i / n) + 1
+            py = cos(2 * pi * i / n) + 1
+            self.blend(circle, node, (int(px * rad) + off,
+                                      int(py * rad) + off), 'alpha')
+        return circle
+
+    def renderVisualize(self) -> None:
+        """Render the visualization screen"""
+        self.totFrames += 1
+
+        frame = np.array(self.temp_bg)
+
+##        for i in range(len(self.buttons)):
+##            px, py = self.buttonPos[i].pos
+##            self.blend(frame, self.buttons[i], (px, py), 'alpha')
+##            self.blend(frame, self.symbols[i], (px - 92, py), 'alpha')
+        self.blend(frame, self.gameGraph, (self.W//4, self.H*3//4), 'alpha')
+
+        # Blend cursor
+        mx = max(0, min(self.W, self.d.winfo_pointerx() - self.d.winfo_rootx()))
+        my = max(0, min(self.H, self.d.winfo_pointery() - self.d.winfo_rooty()))
+        self.blend(frame, self.cursor, (mx + 20, my + 20), 'alpha')
+
+        np.maximum(frame, 0, out=frame)
+        np.minimum(frame, 255, out=frame)
+        i = Image.fromarray(frame.astype("uint8"))
+        self.cf = ImageTk.PhotoImage(i)
+        self.d.itemconfigure(self.finalRender, image=self.cf)
+
+        self.clearCanvas()
+
+        self.texts = []
+
+        name = self.d.create_text(
+            self.W//6 + 30, self.H//6 + 20,
+            text=self.selectedButton[1], fill='#fff',
+            anchor=W, font=('Times', 22)
+            )
+
         self.canvasItems = self.texts
 
 
@@ -306,6 +402,8 @@ class Project(Frame):
             self.renderMenu()
         elif self.window == 'Select':
             self.renderSelect()
+        elif self.window == 'Visualize':
+            self.renderVisualize()
 
         self.after(12, self.updateCanvas)
 
@@ -334,19 +432,12 @@ class Project(Frame):
                 print("Quit")
                 self.root.destroy()
 
-
-        elif self.window == 'Graph':
-            if self.selected(evt.x, evt.y, (100, 480, 380, 550)):
-                if self.country == 'C':
-                    self.country = 'U'
-                else:
-                    self.country = 'C'
-
-            if self.selected(evt.x, evt.y, (500, 480, 780, 550)):
-                self.window = "Menu"
-
-                self.clearCanvas()
-                self.updateCanvas()
+        elif self.window == 'Select':
+            for pos in self.buttonPos:
+                if self.selected(evt.x, evt.y, pos.bounds):
+                    self.window = 'Visualize'
+                    self.loadVisualizeAssets()
+                    return
 
     def clearCanvas(self) -> None:
         """Deletes items in self.canvasItems from the canvas self.d"""
