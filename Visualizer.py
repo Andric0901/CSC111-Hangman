@@ -158,7 +158,7 @@ class Project(Frame):
         #button = np.array(buttonImg, 'float32')
         rects = np.array(Image.open('Assets/Rectangles.png'), 'float32')
         rects[:,:,:3] = 0
-        rects[:,:,3] *= 0.6
+        rects[:,:,3] *= 0.9
 
         bg = np.array(self.background)
         self.blend(bg, title, (self.W//2, self.H//8-40), 'add')
@@ -182,17 +182,18 @@ class Project(Frame):
         self.temp_bg = np.clip(bg, 0, 255)
 
 
-        buttonImg = Image.open('Assets/Button3.png').resize((208, 60))
+        buttonImg = Image.open('Assets/Button3.png').resize((166, 48))
         self.button = np.array(buttonImg, 'float32')
 
-        dims = (120, 31)
-        self.buttons = [np.array(self.button) for _ in range(1)]
+        dims = (83, 24)
+        self.buttons = [np.array(self.button) for _ in range(2)]
         self.buttonPos = [
-            Coords(self.W//4, self.H//3, *dims)
+            Coords(self.W//4, self.H//3 - 25, *dims),
+            Coords(self.W//4, self.H//3 + 35, *dims)
             ]
 
+        self.autoPlay = False
         self.startGame()
-
 
     def start(self) -> None:
         """Start the rendering loop"""
@@ -315,6 +316,7 @@ class Project(Frame):
         playerClass = getattr(hm_players, self.selectedButton[1], None)
         if playerClass is hm_players.RandomPlayer:
             self.player = playerClass()
+            self.gameGraph = None
         else:
             self.player = playerClass(graph)
             self.gameGraph = self.renderGraph(graph)
@@ -322,13 +324,23 @@ class Project(Frame):
         self.hm = hangman.Hangman()
         self.hm.set_word(None)#'malapportionments')
         self.hm.set_guess_status()
+        self.guessCount = 0
 
     def playerMakeGuess(self) -> None:
+        if self.autoPlay:
+            self.d.after(500, self.playerMakeGuess)
+
         if self.hm.game_is_finished():
             self.startGame()
             return
         guess = self.player.make_guess(self.hm, '')
         self.hm.make_guess(guess)
+        self.guessCount += 1
+
+    def togglePlay(self) -> None:
+        self.autoPlay = not self.autoPlay
+        if self.autoPlay:
+            self.d.after(500, self.playerMakeGuess)
 
     def renderGraph(self, graph: hm_game_graph.GameGraph) -> np.array:
         """Renders a graph with its nodes on a circle"""
@@ -351,16 +363,13 @@ class Project(Frame):
 
         frame = np.array(self.temp_bg)
 
-##        for i in range(len(self.buttons)):
-##            px, py = self.buttonPos[i].pos
-##            self.blend(frame, self.buttons[i], (px, py), 'alpha')
-##            self.blend(frame, self.symbols[i], (px - 92, py), 'alpha')
-        self.blend(frame, self.gameGraph, (self.W//4, self.H*3//4), 'alpha')
+        if self.gameGraph is not None:
+            self.blend(frame, self.gameGraph, (self.W//4, self.H*3//4), 'alpha')
 
         for i in range(len(self.buttons)):
             self.blend(frame, self.buttons[i], self.buttonPos[i].pos, 'alpha')
 
-        status = self.hm.get_guess_status()
+        status = self.hm.get_guess_status().upper()
         space = int(min(50, self.W*3/4 / len(status)))
         left = (self.W - (len(status) - 1) * space) // 2
 
@@ -387,11 +396,20 @@ class Project(Frame):
                 letter = self.d.create_text(
                     left + space * i, self.H//2,
                     text=status[i], fill='#fff',
-                    font=('Times', 26)
+                    font=('Times', 27)
                     )
                 self.texts.append(letter)
 
-        texts = ['Step']
+        gameInfo = 'Guesses Remaining: {}\nGuesses Made: {}\nEfficiency: {}'
+        gameInfo = gameInfo.format(self.hm.get_num_tries(),
+                                   self.guessCount,
+                                   round(self.hm.get_efficiency_score(), 3))
+        self.texts.append(self.d.create_text(
+            self.W*3//4 - 20, self.H//4,
+            text=gameInfo, fill='#fff', font=('Times', 14)
+            ))
+
+        texts = ['Step', 'Pause' if self.autoPlay else 'Play']
         for i in range(len(self.buttons)):
             self.texts.append(
                 self.d.create_text(
@@ -454,6 +472,8 @@ class Project(Frame):
         elif self.window == 'Visualize':
             if self.selected(evt.x, evt.y, self.buttonPos[0].bounds):
                 self.playerMakeGuess()
+            if self.selected(evt.x, evt.y, self.buttonPos[1].bounds):
+                self.togglePlay()
 
     def displayImage(self, frame: np.array) -> None:
         """Converts frame into Tk image and displays it on the canvas
