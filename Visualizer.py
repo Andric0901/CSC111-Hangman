@@ -116,7 +116,7 @@ class Project(Frame):
         """Opens image assets used in AI selection menu"""
         panel = np.array(Image.open('Assets/Panel.png'), 'float32')
         title = np.array(Image.open('Assets/Title_select.png'), 'float32')
-        buttonImg = Image.open('Assets/Button2.png').resize((243, 61))#, Image.BILINEAR)
+        buttonImg = Image.open('Assets/Button2.png').resize((243, 61))
         button = np.array(buttonImg, 'float32')
         rect = np.array(Image.open('Assets/Rectangle.png'), 'float32')
         rect[:,:,:3] = 0
@@ -180,6 +180,16 @@ class Project(Frame):
         self.blend(bg, playerSym, (self.W//6 - 5, self.H//6 + 20), 'alpha')
 
         self.temp_bg = np.clip(bg, 0, 255)
+
+
+        buttonImg = Image.open('Assets/Button3.png').resize((208, 60))
+        self.button = np.array(buttonImg, 'float32')
+
+        dims = (120, 31)
+        self.buttons = [np.array(self.button) for _ in range(1)]
+        self.buttonPos = [
+            Coords(self.W//4, self.H//3, *dims)
+            ]
 
         self.startGame()
 
@@ -306,15 +316,19 @@ class Project(Frame):
         if playerClass is hm_players.RandomPlayer:
             self.player = playerClass()
         else:
-            player = playerClass(graph)
+            self.player = playerClass(graph)
             self.gameGraph = self.renderGraph(graph)
 
         self.hm = hangman.Hangman()
-        self.hm.set_word('python')#'malapportionments')
+        self.hm.set_word(None)#'malapportionments')
         self.hm.set_guess_status()
 
     def playerMakeGuess(self) -> None:
-        pass
+        if self.hm.game_is_finished():
+            self.startGame()
+            return
+        guess = self.player.make_guess(self.hm, '')
+        self.hm.make_guess(guess)
 
     def renderGraph(self, graph: hm_game_graph.GameGraph) -> np.array:
         """Renders a graph with its nodes on a circle"""
@@ -343,6 +357,9 @@ class Project(Frame):
 ##            self.blend(frame, self.symbols[i], (px - 92, py), 'alpha')
         self.blend(frame, self.gameGraph, (self.W//4, self.H*3//4), 'alpha')
 
+        for i in range(len(self.buttons)):
+            self.blend(frame, self.buttons[i], self.buttonPos[i].pos, 'alpha')
+
         status = self.hm.get_guess_status()
         space = int(min(50, self.W*3/4 / len(status)))
         left = (self.W - (len(status) - 1) * space) // 2
@@ -350,7 +367,7 @@ class Project(Frame):
         self.blend(frame, self.charLight, (left + space * 4, self.H//2), 'add')
 
         for i in range(len(status)):
-            self.blend(frame, self.charBox, (left + space * i, self.H//2), 'alpha')
+            self.blend(frame, self.charBox, (left + space * i, self.H//2), 'replace')
 
         self.blendCursor(frame)
         self.displayImage(frame)
@@ -363,15 +380,25 @@ class Project(Frame):
             text=self.selectedButton[1], fill='#fff',
             anchor=W, font=('Times', 22)
             )
+        self.texts.append(name)
 
         for i in range(len(status)):
             if status[i] != '?':
                 letter = self.d.create_text(
                     left + space * i, self.H//2,
                     text=status[i], fill='#fff',
-                    font=('Times', 18, 'bold')
+                    font=('Times', 26)
                     )
                 self.texts.append(letter)
+
+        texts = ['Step']
+        for i in range(len(self.buttons)):
+            self.texts.append(
+                self.d.create_text(
+                    *self.buttonPos[i].pos,
+                    text=texts[i], fill='#fff', font=('Times', 22)
+                    )
+                )
 
         self.canvasItems = self.texts
 
@@ -424,6 +451,10 @@ class Project(Frame):
                     self.loadVisualizeAssets()
                     return
 
+        elif self.window == 'Visualize':
+            if self.selected(evt.x, evt.y, self.buttonPos[0].bounds):
+                self.playerMakeGuess()
+
     def displayImage(self, frame: np.array) -> None:
         """Converts frame into Tk image and displays it on the canvas
         MUTATES frame to ensure no uint8 overflow.
@@ -456,7 +487,7 @@ class Project(Frame):
         """Blend image source onto dest, centered at coords (x, y)
 
         Preconditions:
-            - method in {"alpha", "add", "screen"}
+            - method in {"alpha", "add", "screen", "replace"}
         """
         left = coords[0] - (source.shape[1]//2)
         right = left + source.shape[1]
@@ -496,6 +527,9 @@ class Project(Frame):
         if method == 'screen':
             dest[up:down, left:right] = 255 - (255 - dest[up:down, left:right]) \
                                         * (255 - source) / 255
+
+        if method == 'replace':
+            dest[up:down, left:right] = source
 
 
 if __name__ == "__main__":
