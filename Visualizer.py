@@ -400,10 +400,12 @@ class Project(Frame):
                     )
                 self.texts.append(letter)
 
-        gameInfo = 'Guesses Remaining: {}\nGuesses Made: {}\nEfficiency: {}'
+        gameInfo = 'Guesses Remaining: {}\nGuesses Made: {}\nEfficiency: {}\n' \
+                   'Correct Word: {}'
         gameInfo = gameInfo.format(self.hm.get_num_tries(),
                                    self.guessCount,
-                                   round(self.hm.get_efficiency_score(), 3))
+                                   round(self.hm.get_efficiency_score(), 3),
+                                   self.hm.get_chosen_word())
         self.texts.append(self.d.create_text(
             self.W*3//4 - 20, self.H//4,
             text=gameInfo, fill='#fff', font=('Times', 14)
