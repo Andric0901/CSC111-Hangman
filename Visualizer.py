@@ -5,7 +5,7 @@
     - Install tkinter
 """
 
-# Main menu + AI selection
+# Main menu + AI selection + Visualization
 
 from tkinter import Frame, Tk, Canvas, N, E, S, W
 from PIL import Image, ImageTk, ImageDraw
@@ -169,9 +169,10 @@ class Project(Frame):
 
         self.graphic = 255 - self.graphic
         self.graphic[:,:,3] = 255 - self.graphic[:,:,0]
-        self.blend(bg, self.graphic, (self.W//2, self.H//3), 'alpha')
+        self.blend(bg, self.graphic, (self.W//2-10, self.H*2//7), 'alpha')
 
         self.charBox = np.array(Image.open('Assets/Character.png'), 'float32')
+        self.charLight = np.array(Image.open('Assets/Highlight.png'), 'float32')
         self.badge = np.array(Image.open('Assets/Badge.png'), 'float32')
 
         playerSym = self.symbols[self.selectedButton[0]]
@@ -303,11 +304,17 @@ class Project(Frame):
         graph = hm_players.load_word_bank('Small.txt', order)
         playerClass = getattr(hm_players, self.selectedButton[1], None)
         if playerClass is hm_players.RandomPlayer:
-            player = playerClass()
-            return
+            self.player = playerClass()
+        else:
+            player = playerClass(graph)
+            self.gameGraph = self.renderGraph(graph)
 
-        player = playerClass(graph)
-        self.gameGraph = self.renderGraph(graph)
+        self.hm = hangman.Hangman()
+        self.hm.set_word('python')#'malapportionments')
+        self.hm.set_guess_status()
+
+    def playerMakeGuess(self) -> None:
+        pass
 
     def renderGraph(self, graph: hm_game_graph.GameGraph) -> np.array:
         """Renders a graph with its nodes on a circle"""
@@ -336,6 +343,15 @@ class Project(Frame):
 ##            self.blend(frame, self.symbols[i], (px - 92, py), 'alpha')
         self.blend(frame, self.gameGraph, (self.W//4, self.H*3//4), 'alpha')
 
+        status = self.hm.get_guess_status()
+        space = int(min(50, self.W*3/4 / len(status)))
+        left = (self.W - (len(status) - 1) * space) // 2
+
+        self.blend(frame, self.charLight, (left + space * 4, self.H//2), 'add')
+
+        for i in range(len(status)):
+            self.blend(frame, self.charBox, (left + space * i, self.H//2), 'alpha')
+
         self.blendCursor(frame)
         self.displayImage(frame)
         self.clearCanvas()
@@ -347,6 +363,15 @@ class Project(Frame):
             text=self.selectedButton[1], fill='#fff',
             anchor=W, font=('Times', 22)
             )
+
+        for i in range(len(status)):
+            if status[i] != '?':
+                letter = self.d.create_text(
+                    left + space * i, self.H//2,
+                    text=status[i], fill='#fff',
+                    font=('Times', 18, 'bold')
+                    )
+                self.texts.append(letter)
 
         self.canvasItems = self.texts
 
