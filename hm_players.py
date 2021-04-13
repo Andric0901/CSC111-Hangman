@@ -187,13 +187,13 @@ class GraphNextPlayer(hangman.Player):
         status = game.get_guess_status()
         if status == '?' * len(status):
             # Beginning, choose most common character
-            print('Beginning ', end='  ')
+            # print('Beginning ', end='  ')
             return self.frequency_guess()
 
         # Guess adjacent character (first one seen)
         choice = self.adjacent_guess(game)
         if choice is not None:
-            print('Adjacent', choice[1], end='  ')
+            # print('Adjacent', choice[1], end='  ')
             return choice[0]
 
         # If most letters are known then guess entire word
@@ -201,11 +201,11 @@ class GraphNextPlayer(hangman.Player):
         if self.can_guess_word and num_unknown <= 0.4 * len(status):
             result = self.guess_word(game)
             if result is not None:
-                print('Word      ', end='  ')
+                # print('Word      ', end='  ')
                 return result
 
         # Last resort, random guess
-        print('Random    ', end='  ')
+        # print('Random    ', end='  ')
         return self.random_guess()
 
     def frequency_guess(self) -> str:
@@ -392,32 +392,31 @@ if __name__ == "__main__":
     # for _ in range(100):
     #     print(hangman.run_game(random_p))
     #     random_p._visited_characters = set()
-    #
-    frequent_p = FrequentPlayer(g)
-    for _ in range(100):
-        print(hangman.run_game(frequent_p))
-        frequent_p._visited_characters = set()
-        count += 1
-        if time.perf_counter() - start > 10:
-            print(count)
-            break
-    # print(hangman.run_game(frequent_p, can_guess_word=True))
+
+    # frequent_p = FrequentPlayer(g, can_guess_word=True)
+    # for _ in range(100):
+    #     print(hangman.run_game(frequent_p))
+    #     frequent_p._visited_characters = set()
+    #     count += 1
+    #     if time.perf_counter() - start > 10:
+    #         print(count)
+    #         break
     # random_graph_p = RandomGraphPlayer(g)
     # for _ in range(100):
     #     print(hangman.run_game(random_graph_p))
     #     random_graph_p._visited_characters = set()
-    #
-    # graph_next_p = GraphNextPlayer(g)
+
+    # graph_next_p = GraphNextPlayer(g, can_guess_word=True)
     # for _ in range(100):
     #     # TODO: if testing GraphNextPlayer with this code,
-    #     #       comment out 3 print statements inside GraphNextPlayer.make_guess()
+    #     #       comment out 4 print statements inside GraphNextPlayer.make_guess()
     #     print(hangman.run_game(graph_next_p))
     #     graph_next_p._visited_characters = set()
 
-    # graph_prev_p = GraphPrevPlayer(g)
+    # graph_prev_p = GraphPrevPlayer(g, can_guess_word=True)
     # for _ in range(100):
     #     # TODO: if testing graph_prev_p with this code,
-    #     #       comment out 3 print statements inside GraphNextPlayer.make_guess()
+    #     #       comment out 4 print statements inside GraphNextPlayer.make_guess()
     #     print(hangman.run_game(graph_prev_p))
     #     graph_prev_p._visited_characters = set()
 
