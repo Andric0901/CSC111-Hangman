@@ -198,6 +198,7 @@ class Project(Frame):
             ]
 
         self.autoPlay = False
+        self.playerGraph = None
         self.startGame()
 
     def start(self) -> None:
@@ -316,18 +317,20 @@ class Project(Frame):
 
     def startGame(self) -> None:
         """Initializes a Hangman game"""
-        order = 'prev' if self.selectedButton[0] == 3 else 'next'
-        graph = hm_players.load_word_bank('valid_words_large.txt', order)
         playerClass = getattr(hm_players, self.selectedButton[1], None)
         self.gameGraph = None
-        self.playerGraph = None
         if playerClass is hm_players.RandomPlayer:
             self.player = playerClass()
+            self.playerGraph = None
         else:
+            if self.playerGraph is None:
+                order = 'prev' if self.selectedButton[0] == 3 else 'next'
+                graph = hm_players.load_word_bank('valid_words_large.txt', order)
+                self.playerGraph = graph
+            self.gameGraph = self.renderGraph(self.playerGraph)
+
             # By default, allowed the AIs to guess the full word
-            self.player = playerClass(graph, can_guess_word=True)
-            self.playerGraph = graph
-            self.gameGraph = self.renderGraph(graph)
+            self.player = playerClass(self.playerGraph, can_guess_word=True)
 
         self.hm = hangman.Hangman()
         self.hm.set_word(None)
