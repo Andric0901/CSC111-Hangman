@@ -71,8 +71,9 @@ class RandomGraphPlayer(hangman.Player):
     #       player just makes random guesses.
     _graph: Optional[GameGraph]
 
-    def __init__(self, graph: GameGraph) -> None:
+    def __init__(self, graph: GameGraph, can_guess_word: bool = False) -> None:
         """Initialize this player.
+        Can_guess_word will not be used and is only for compatibility.
 
         Preconditions:
             - graph represents a game graph

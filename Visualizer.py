@@ -149,6 +149,11 @@ class Project(Frame):
             ]
 
         self.selectedButton = None
+        self.can_guess_word = True
+
+        self.button3 = np.array(Image.open('Assets/Button3.png').resize((144, 48)),
+                                'float32')
+        self.wordButton = Coords(self.W*3//4 + 10, self.H*3//4 + 10, 72, 24)
 
     def loadVisualizeAssets(self) -> None:
         """Opens image assets used in visualization screen"""
@@ -186,15 +191,16 @@ class Project(Frame):
 
         self.temp_bg = np.clip(bg, 0, 255)
 
-
         buttonImg = Image.open('Assets/Button3.png').resize((166, 48))
         self.button = np.array(buttonImg, 'float32')
 
         dims = (83, 24)
-        self.buttons = [np.array(self.button) for _ in range(2)]
+        self.buttons = [np.array(self.button) for _ in range(4)]
         self.buttonPos = [
             Coords(self.W//4, self.H//3 - 25, *dims),
-            Coords(self.W//4, self.H//3 + 35, *dims)
+            Coords(self.W//4, self.H//3 + 35, *dims),
+            Coords(self.W*3//4 - 20, self.H*3//5 + 5, *dims),
+            Coords(self.W*3//4 - 20, self.H*5//6 + 30, *dims)
             ]
 
         self.autoPlay = False
@@ -276,6 +282,8 @@ class Project(Frame):
             self.blend(frame, self.buttons[i], (px, py), 'alpha')
             self.blend(frame, self.symbols[i], (px - 92, py), 'alpha')
 
+        self.blend(frame, self.button3, self.wordButton.pos, 'alpha')
+
         self.blendCursor(frame)
         self.displayImage(frame)
         self.clearCanvas()
@@ -293,7 +301,6 @@ class Project(Frame):
         # Use the docstrings as description
         x = self.d.winfo_pointerx() - self.d.winfo_rootx()
         y = self.d.winfo_pointery() - self.d.winfo_rooty()
-
 
         for i in range(len(self.buttons)):
             if self.selected(x, y, self.buttonPos[i].bounds):
@@ -313,7 +320,27 @@ class Project(Frame):
                     font=('Times', 11), width=340
                     )
                 )
+
+        self.texts.append(
+            self.d.create_text(
+                self.W//2 - 30, self.H*3//4 + 10,
+                text='Can guess entire words:', fill='#000',
+                anchor=W, font=('Times', 15)
+                )
+            )
+        self.texts.append(
+            self.d.create_text(
+                *self.wordButton.pos,
+                text=str(self.can_guess_word), fill='#fff',
+                font=('Times', 15)
+                )
+            )
+
         self.canvasItems = self.texts
+
+    def toggleWordGuess(self) -> None:
+        """Toggles whether AI can guess entire words"""
+        self.can_guess_word = not self.can_guess_word
 
     def startGame(self) -> None:
         """Initializes a Hangman game"""
@@ -329,8 +356,8 @@ class Project(Frame):
                 self.playerGraph = graph
             self.gameGraph = self.renderGraph(self.playerGraph)
 
-            # By default, allowed the AIs to guess the full word
-            self.player = playerClass(self.playerGraph, can_guess_word=True)
+            self.player = playerClass(self.playerGraph,
+                                      can_guess_word=self.can_guess_word)
 
         self.hm = hangman.Hangman()
         self.hm.set_word(None)
@@ -501,7 +528,9 @@ class Project(Frame):
             text=gameInfo, fill='#fff', font=('Times', 14)
             ))
 
-        texts = ['Step', 'Pause' if self.autoPlay else 'Play']
+        texts = ['Faster' if self.autoPlay else 'Step',
+                 'Pause' if self.autoPlay else 'Play',
+                 'Run __ Games', 'Finish']
         for i in range(len(self.buttons)):
             self.texts.append(
                 self.d.create_text(
@@ -561,12 +590,18 @@ class Project(Frame):
                     self.window = 'Visualize'
                     self.loadVisualizeAssets()
                     return
+            if self.selected(evt.x, evt.y, self.wordButton.bounds):
+                self.toggleWordGuess()
 
         elif self.window == 'Visualize':
             if self.selected(evt.x, evt.y, self.buttonPos[0].bounds):
                 self.playerMakeGuess()
             if self.selected(evt.x, evt.y, self.buttonPos[1].bounds):
                 self.togglePlay()
+            if self.selected(evt.x, evt.y, self.buttonPos[3].bounds):
+                self.window = 'Menu'
+                self.loadMenuAssets()
+                self.autoPlay = False
 
     def displayImage(self, frame: np.array) -> None:
         """Converts frame into Tk image and displays it on the canvas
