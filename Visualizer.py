@@ -8,7 +8,7 @@
 # Main menu + AI selection + Visualization
 
 from tkinter import Frame, Tk, Canvas, N, E, S, W
-from PIL import Image, ImageTk, ImageDraw
+from PIL import Image, ImageTk, ImageDraw, ImageFilter
 import numpy as np
 import time
 from math import sin, cos, pi
@@ -154,8 +154,6 @@ class Project(Frame):
         """Opens image assets used in visualization screen"""
         panel = np.array(Image.open('Assets/Panel.png'), 'float32')
         title = np.array(Image.open('Assets/Title_visualize.png'), 'float32')
-        #buttonImg = Image.open('Assets/Button2.png').resize((243, 61))
-        #button = np.array(buttonImg, 'float32')
         rects = np.array(Image.open('Assets/Rectangles.png'), 'float32')
         rects[:,:,:3] = 0
         rects[:,:,3] *= 0.9
@@ -167,9 +165,16 @@ class Project(Frame):
         self.blend(bg, panel, (self.W//2, self.H//2+25), 'alpha')
         self.blend(bg, rects, (self.W//2 - 20, self.H//2 + 30), 'alpha')
 
+        PAD = 8
+        padded = np.zeros((self.graphic.shape[0] + PAD * 2,
+                           self.graphic.shape[1] + PAD * 2, 4), 'float32')
+        padded[PAD:-PAD, PAD:-PAD] = self.graphic
+        graphic = Image.fromarray(padded.astype('uint8'))
+        graphicBlur = graphic.filter(ImageFilter.GaussianBlur(8))
+        self.graphicBlur = np.array(graphicBlur, 'float32')
+
         self.graphic = 255 - self.graphic
         self.graphic[:,:,3] = 255 - self.graphic[:,:,0]
-        self.blend(bg, self.graphic, (self.W//2-10, self.H*2//7), 'alpha')
 
         self.charBox = np.array(Image.open('Assets/Character.png'), 'float32')
         self.charLight = np.array(Image.open('Assets/Highlight.png'), 'float32')
@@ -314,33 +319,37 @@ class Project(Frame):
         order = 'next' if self.selectedButton[0] == 3 else 'prev'
         graph = hm_players.load_word_bank('Small.txt', order)
         playerClass = getattr(hm_players, self.selectedButton[1], None)
+        self.gameGraph = None
         if playerClass is hm_players.RandomPlayer:
             self.player = playerClass()
-            self.gameGraph = None
         else:
             self.player = playerClass(graph)
             self.gameGraph = self.renderGraph(graph)
 
         self.hm = hangman.Hangman()
-        self.hm.set_word(None)#'malapportionments')
+        self.hm.set_word(None)
         self.hm.set_guess_status()
         self.guessCount = 0
 
     def playerMakeGuess(self) -> None:
-        if self.autoPlay:
-            self.d.after(500, self.playerMakeGuess)
-
         if self.hm.game_is_finished():
             self.startGame()
+            if self.autoPlay:
+                self.d.after(400, self.playerMakeGuess)
             return
+
         guess = self.player.make_guess(self.hm, '')
         self.hm.make_guess(guess)
         self.guessCount += 1
 
+        wait = 1200 if self.hm.game_is_finished() else 400
+        if self.autoPlay:
+            self.d.after(wait, self.playerMakeGuess)
+
     def togglePlay(self) -> None:
         self.autoPlay = not self.autoPlay
         if self.autoPlay:
-            self.d.after(500, self.playerMakeGuess)
+            self.d.after(400, self.playerMakeGuess)
 
     def renderGraph(self, graph: hm_game_graph.GameGraph) -> np.array:
         """Renders a graph with its nodes on a circle"""
@@ -362,6 +371,17 @@ class Project(Frame):
         self.totFrames += 1
 
         frame = np.array(self.temp_bg)
+
+        self.blend(frame, self.graphic, (self.W//2-10, self.H*2//7), 'alpha')
+
+        if self.hm.game_is_finished():
+            if self.hm.get_num_tries() == 0:
+                color = np.array([[(1, 0, 0, 1.)]])
+            else:
+                color = np.array([[(0, 1, 0, 1.)]])
+
+            self.blend(frame, self.graphicBlur * color,
+                       (self.W//2-10, self.H*2//7), 'add')
 
         if self.gameGraph is not None:
             self.blend(frame, self.gameGraph, (self.W//4, self.H*3//4), 'alpha')
