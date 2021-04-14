@@ -468,15 +468,36 @@ class Project(Frame):
         eff = 0
         won = 0
         guesses = 0
-        start = time.time()
-        for i in range(self.numFFGames):
+        start = time.perf_counter()
+        lastIdle = start
+
+        # Indicates that we are running the games so disable the button
+        self.numFFGames = -self.numFFGames
+
+        for i in range(-self.numFFGames):
             self.player.clear_visited()
             result = hangman.run_game(self.player)
             eff += result[0]
             won += result[1]
             guesses += len(result[2]) - 1
+            # Keep the UI somewhat responsive
+            if time.perf_counter() - lastIdle > 0.3:
+                lastIdle = time.perf_counter()
+                self.statText = 'Running... {}/{}'.format(i, -self.numFFGames)
+                updateTime = time.perf_counter()
+                # This is not good practice, should use multiprocessing instead
+                # but since the button is disabled while running, it's okay
+                self.update()
+                if self.window == 'Menu':
+                    break
+                # Account for the time spent on GUI
+                start += time.perf_counter() - updateTime
+
+        # Indicates that we are finished running so enable the button
+        self.numFFGames = -self.numFFGames
+
         eff /= self.numFFGames
-        t = time.time() - start
+        t = time.perf_counter() - start
         stat = 'Games Won: {}\nTotal Guesses: {}\nEfficiency: {}\nTime Taken: {} s'
         self.statText = stat.format(won, guesses, round(eff, 3), round(t, 2))
 
@@ -549,7 +570,7 @@ class Project(Frame):
 
         texts = ['Faster' if self.autoPlay else 'Step',
                  'Pause' if self.autoPlay else 'Play',
-                 str(self.numFFGames), 'Finish']
+                 str(abs(self.numFFGames)), 'Finish']
         for i in range(len(self.buttons)):
             self.texts.append(
                 self.d.create_text(
@@ -631,7 +652,8 @@ class Project(Frame):
             if self.selected(evt.x, evt.y, self.buttonPos[1].bounds):
                 self.togglePlay()
             if self.selected(evt.x, evt.y, self.buttonPos[2].bounds):
-                self.runFFGames()
+                if self.numFFGames > 0:
+                    self.runFFGames()
             if self.selected(evt.x, evt.y, self.buttonPos[3].bounds):
                 self.window = 'Menu'
                 self.loadMenuAssets()
