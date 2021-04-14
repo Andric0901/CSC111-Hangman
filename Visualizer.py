@@ -316,15 +316,17 @@ class Project(Frame):
 
     def startGame(self) -> None:
         """Initializes a Hangman game"""
-        order = 'next' if self.selectedButton[0] == 3 else 'prev'
-        graph = hm_players.load_word_bank('Small.txt', order)
+        order = 'prev' if self.selectedButton[0] == 3 else 'next'
+        graph = hm_players.load_word_bank('valid_words_large.txt', order)
         playerClass = getattr(hm_players, self.selectedButton[1], None)
         self.gameGraph = None
+        self.playerGraph = None
         if playerClass is hm_players.RandomPlayer:
             self.player = playerClass()
         else:
             # By default, allowed the AIs to guess the full word
             self.player = playerClass(graph, can_guess_word=True)
+            self.playerGraph = graph
             self.gameGraph = self.renderGraph(graph)
 
         self.hm = hangman.Hangman()
@@ -368,9 +370,73 @@ class Project(Frame):
                                       int(py * rad) + off), 'alpha')
         return circle
 
+    def renderAdjGuess(self, frame: np.array, left: int, space: int) -> None:
+        """Renders edges and vertices corresponding to an adjacent guess"""
+        guess = self.player.adjacent_guess(self.hm, True)
+        if guess is not None:
+            rad = self.gameGraph.shape[0] / 2
+            offx, offy = self.W//4, self.H*3//4
+
+            choice, known, index = guess
+            vn = sorted(self.playerGraph.get_all_vertices())
+            n = len(vn)
+            k = vn.index(known)
+            c = vn.index(choice)
+
+            self.texts.append(self.d.create_text(
+                *self.circleCoords(k / n, rad, offx, offy),
+                text=known.upper(), fill='#fff', font=('Times', 18))
+                )
+            self.texts.append(self.d.create_text(
+                *self.circleCoords(c / n, rad, offx, offy),
+                text=choice.upper(), fill='#ff8', font=('Times', 18))
+                )
+
+            edges = Image.new('RGBA', self.gameGraph.shape[:2])
+            draw = ImageDraw.Draw(edges)
+
+            possible = {(w, self.playerGraph.get_weight(known, w))
+                        for w in self.playerGraph.get_neighbours(known)}
+            alternatives = sorted(possible, key=lambda p: p[1], reverse=True)[:5]
+
+            for letter in alternatives:
+                i = vn.index(letter[0])
+                if i == c or i == k:
+                    continue
+                self.texts.append(self.d.create_text(
+                    *self.circleCoords(i / n, rad, offx, offy),
+                    text=letter[0].upper(), fill='#bcc', font=('Times', 18))
+                    )
+                draw.line(self.circleCoords(i / n, rad - 12, rad, rad) + \
+                      self.circleCoords(k / n, rad - 12, rad, rad),
+                      fill=(160, 192, 192, 255), width=2)
+
+
+            draw.line(self.circleCoords(k / n, rad - 12, rad, rad) + \
+                      self.circleCoords(c / n, rad - 12, rad, rad),
+                      fill=(255, 255, 128, 255), width=3)
+
+            self.blend(frame, np.array(edges), (self.W//4, self.H*3//4), 'alpha')
+
+            x = int(type(self.player) is hm_players.GraphNextPlayer)
+            self.blend(frame, self.charLight,
+                       (left + space * (index + x), self.H//2), 'add')
+
+    def circleCoords(self, i: float, r: float,
+                     offx: int, offy: int) -> tuple[int, int]:
+        """Returns coordinates of the point at i rounds around a circle
+        centered at (offx, offy) with radius r."""
+        px = sin(2 * pi * i)
+        py = cos(2 * pi * i)
+
+        return (int(px * r) + offx, int(py * r) + offy)
+
     def renderVisualize(self) -> None:
         """Render the visualization screen"""
         self.totFrames += 1
+
+        self.clearCanvas()
+        self.texts = []
 
         frame = np.array(self.temp_bg)
 
@@ -395,16 +461,15 @@ class Project(Frame):
         space = int(min(50, self.W*3/4 / len(status)))
         left = (self.W - (len(status) - 1) * space) // 2
 
-        self.blend(frame, self.charLight, (left + space * 4, self.H//2), 'add')
+        if hasattr(self.player, 'adjacent_guess'):
+            self.renderAdjGuess(frame, left, space)
 
         for i in range(len(status)):
             self.blend(frame, self.charBox, (left + space * i, self.H//2), 'replace')
 
         self.blendCursor(frame)
         self.displayImage(frame)
-        self.clearCanvas()
 
-        self.texts = []
 
         name = self.d.create_text(
             self.W//6 + 30, self.H//6 + 20,
@@ -441,6 +506,7 @@ class Project(Frame):
                     text=texts[i], fill='#fff', font=('Times', 22)
                     )
                 )
+
 
         self.canvasItems = self.texts
 

@@ -221,9 +221,10 @@ class GraphNextPlayer(hangman.Player):
         self._visited_characters.add(choice)
         return choice
 
-    def adjacent_guess(self, game: hangman.Hangman) -> Optional[tuple[str, str]]:
+    def adjacent_guess(self, game: hangman.Hangman,
+                       dry_run: bool = False) -> Optional[tuple[str, str, int]]:
         """Guess a letter that comes after a known letter.
-        Returns (choice, s) where s is the known letter."""
+        Returns (choice, s, index) where s is the known letter."""
         status = game.get_guess_status()
         for i in range(len(status) - 1):
             s = status[i]
@@ -234,8 +235,9 @@ class GraphNextPlayer(hangman.Player):
                          if w not in self._visited_characters}
                 if len(chars) > 0:
                     choice = max(chars, key=lambda p: p[1])[0]
-                    self._visited_characters.add(choice)
-                    return (choice, s)
+                    if not dry_run:
+                        self._visited_characters.add(choice)
+                    return (choice, s, i)
 
     def random_guess(self) -> str:
         """Make a random guess"""
@@ -262,9 +264,10 @@ class GraphPrevPlayer(GraphNextPlayer):
     """This player is the counterpart to GraphNextPlayer.
     It guesses the letter before a known letter."""
 
-    def adjacent_guess(self, game: hangman.Hangman) -> Optional[tuple[str, str]]:
+    def adjacent_guess(self, game: hangman.Hangman,
+                       dry_run: bool = False) -> Optional[tuple[str, str, int]]:
         """Guess the letter that comes before a known letter.
-        Returns (choice, s) where s is the known letter."""
+        Returns (choice, s, index) where s is the known letter."""
         status = game.get_guess_status()
         for i in range(len(status) - 1):
             s = status[i + 1]
@@ -275,8 +278,9 @@ class GraphPrevPlayer(GraphNextPlayer):
                          if w not in self._visited_characters}
                 if len(chars) > 0:
                     choice = max(chars, key=lambda p: p[1])[0]
-                    self._visited_characters.add(choice)
-                    return (choice, s)
+                    if not dry_run:
+                        self._visited_characters.add(choice)
+                    return (choice, s, i)
 
 
 class FrequentPlayer(hangman.Player):
