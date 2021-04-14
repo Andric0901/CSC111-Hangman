@@ -199,12 +199,14 @@ class Project(Frame):
         self.buttonPos = [
             Coords(self.W//4, self.H//3 - 25, *dims),
             Coords(self.W//4, self.H//3 + 35, *dims),
-            Coords(self.W*3//4 - 20, self.H*3//5 + 5, *dims),
+            Coords(self.W*4//5 - 20, self.H*3//5 + 5, *dims),
             Coords(self.W*3//4 - 20, self.H*5//6 + 30, *dims)
             ]
 
         self.autoPlay = False
         self.playerGraph = None
+        self.numFFGames = 100
+        self.statText = ''
         self.startGame()
 
     def start(self) -> None:
@@ -461,6 +463,23 @@ class Project(Frame):
 
         return (int(px * r) + offx, int(py * r) + offy)
 
+    def runFFGames(self) -> None:
+        """Runs games fast-forward without visualization"""
+        eff = 0
+        won = 0
+        guesses = 0
+        start = time.time()
+        for i in range(self.numFFGames):
+            self.player.clear_visited()
+            result = hangman.run_game(self.player)
+            eff += result[0]
+            won += result[1]
+            guesses += len(result[2]) - 1
+        eff /= self.numFFGames
+        t = time.time() - start
+        stat = 'Games Won: {}\nTotal Guesses: {}\nEfficiency: {}\nTime Taken: {} s'
+        self.statText = stat.format(won, guesses, round(eff, 3), round(t, 2))
+
     def renderVisualize(self) -> None:
         """Render the visualization screen"""
         self.totFrames += 1
@@ -530,7 +549,7 @@ class Project(Frame):
 
         texts = ['Faster' if self.autoPlay else 'Step',
                  'Pause' if self.autoPlay else 'Play',
-                 'Run __ Games', 'Finish']
+                 str(self.numFFGames), 'Finish']
         for i in range(len(self.buttons)):
             self.texts.append(
                 self.d.create_text(
@@ -538,7 +557,20 @@ class Project(Frame):
                     text=texts[i], fill='#fff', font=('Times', 22)
                     )
                 )
+        self.texts.append(
+            self.d.create_text(
+                self.W*2//3 - 40, self.H*3//5 + 5,
+                text='Run Games:', fill='#000', font=('Times', 18)
+                )
+            )
 
+        self.texts.append(
+            self.d.create_text(
+                self.W*2//3 - 40, self.H*3//4,
+                text=self.statText,
+                fill='#fff', font=('Times', 14), anchor=W
+                )
+            )
 
         self.canvasItems = self.texts
 
@@ -598,6 +630,8 @@ class Project(Frame):
                 self.playerMakeGuess()
             if self.selected(evt.x, evt.y, self.buttonPos[1].bounds):
                 self.togglePlay()
+            if self.selected(evt.x, evt.y, self.buttonPos[2].bounds):
+                self.runFFGames()
             if self.selected(evt.x, evt.y, self.buttonPos[3].bounds):
                 self.window = 'Menu'
                 self.loadMenuAssets()

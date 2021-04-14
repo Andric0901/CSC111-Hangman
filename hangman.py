@@ -245,6 +245,10 @@ class Player:
         """
         raise NotImplementedError
 
+    def clear_visited(self) -> None:
+        """Clears the visited characters set"""
+        self._visited_characters = set()
+
 
 ################################################################################
 # Functions for running games
@@ -307,19 +311,11 @@ def run_game(player: Player, word: str = None,
         previous_character = user_guess
         guess_sequence.append(user_guess)
 
-    if hangman.get_num_tries() == 0:
-        return (
-            hangman.get_efficiency_score(),
-            False,
-            guess_sequence,
-            _correct_word
-        )
-    else:
-        return (
-            hangman.get_efficiency_score(),
-            True,
-            guess_sequence,
-            _correct_word
+    return (
+        hangman.get_efficiency_score(),
+        hangman.get_num_tries() > 0,
+        guess_sequence,
+        _correct_word
         )
 
 
