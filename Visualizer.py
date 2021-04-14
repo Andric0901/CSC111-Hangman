@@ -323,7 +323,8 @@ class Project(Frame):
         if playerClass is hm_players.RandomPlayer:
             self.player = playerClass()
         else:
-            self.player = playerClass(graph)
+            # By default, allowed the AIs to guess the full word
+            self.player = playerClass(graph, can_guess_word=True)
             self.gameGraph = self.renderGraph(graph)
 
         self.hm = hangman.Hangman()
@@ -334,6 +335,7 @@ class Project(Frame):
     def playerMakeGuess(self) -> None:
         if self.hm.game_is_finished():
             self.startGame()
+            self.player._visited_characters = set()
             if self.autoPlay:
                 self.d.after(400, self.playerMakeGuess)
             return

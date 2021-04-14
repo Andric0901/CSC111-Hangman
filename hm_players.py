@@ -91,7 +91,11 @@ class RandomGraphPlayer(hangman.Player):
             return self._random_vertex_guess()
         else:
             # Not first guess, makes random guesses based on neighbours
-            get_previous_vertex = self._graph.get_vertex_by_item(previous_character)
+            try:
+                get_previous_vertex = self._graph.get_vertex_by_item(previous_character)
+            except ValueError:
+                random_item = random.choice(list(self._graph.get_all_vertices()))
+                get_previous_vertex = self._graph.get_vertex_by_item(random_item)
             all_neighbouring_vertices = [v for v in get_previous_vertex.neighbours]
             if len(all_neighbouring_vertices) == 0:
                 # If there are no neighbours (highly unlikely), guess random character
@@ -318,6 +322,7 @@ class FrequentPlayer(hangman.Player):
             if suggested_word == '':
                 return self._make_guess_body()
             else:
+                # print('guessed the full word')
                 self._visited_characters.add(suggested_word)
                 return suggested_word
         else:
