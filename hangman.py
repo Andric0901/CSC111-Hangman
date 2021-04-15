@@ -14,6 +14,7 @@ from __future__ import annotations
 from typing import Optional
 import random
 import time
+import multiprocessing as mp
 
 GAME_START_CHARACTER = '*'
 VALID_CHARACTERS = 'abcdefghijklmnopqrstuvwxyz'
@@ -273,6 +274,12 @@ def run_games(n: int, player: Player) -> tuple[float, int, int, float]:
     eff /= max(1, won)
     t = time.perf_counter() - start
     return (eff, won, guesses, t)
+
+
+def run_games_async(n: int, player: Player, q: mp.Queue) -> None:
+    """Run n Hangman games and report the results through the Queue"""
+    result = run_games(n, player)
+    q.put(result)
 
 
 def run_game(player: Player, word: str = None,

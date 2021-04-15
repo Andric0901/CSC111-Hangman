@@ -12,6 +12,8 @@ from PIL import Image, ImageTk, ImageDraw, ImageFilter
 import numpy as np
 import time
 from math import sin, cos, pi
+import multiprocessing as mp
+from queue import Empty
 
 import hangman
 import hm_players
@@ -463,19 +465,33 @@ class Project(Frame):
 
         return (int(px * r) + offx, int(py * r) + offy)
 
-    def runFFGames(self) -> None:
-        """Runs games fast-forward without visualization"""
+    def runFFGames(self, num_processes: int = 3) -> None:
+        """Runs games fast-forward without visualization
+        Uses mutiprocessing with num_processes threads total
+        including the main thread"""
         self.autoPlay = False
         eff = 0
         won = 0
         guesses = 0
+
+        MP = num_processes
+        q = mp.Queue(MP - 1)
+        proc = [mp.Process(target=hangman.run_games_async,
+                           args=(self.numFFGames // MP, self.player, q))
+                for _ in range(MP - 1)]
+
+        for p in proc:
+            p.start()
+
+        numRemaining = self.numFFGames - (MP - 1) * (self.numFFGames // MP)
+
         start = time.perf_counter()
         lastIdle = start
 
         # Indicates that we are running the games so disable the button
         self.numFFGames = -self.numFFGames
 
-        for i in range(-self.numFFGames):
+        for i in range(numRemaining):
             self.player.clear_visited()
             result = hangman.run_game(self.player)
             eff += result[0] * result[1]
@@ -484,9 +500,9 @@ class Project(Frame):
             # Keep the UI somewhat responsive
             if time.perf_counter() - lastIdle > 0.3:
                 lastIdle = time.perf_counter()
-                self.statText = 'Running... {}/{}'.format(i, -self.numFFGames)
-                updateTime = time.perf_counter()
-                # This is not good practice, should use multiprocessing instead
+                self.statText = 'Running... {}/{}'.format(i * MP, -self.numFFGames)
+                updateTime = lastIdle
+                # This is not good practice, should use a different thread
                 # but since the button is disabled while running, it's okay
                 self.update()
                 if self.window == 'Menu':
@@ -497,8 +513,35 @@ class Project(Frame):
         # Indicates that we are finished running so enable the button
         self.numFFGames = -self.numFFGames
 
+        # Stop everything if user clicks 'Finish' button
+        if self.window == 'Menu':
+            for p in proc:
+                p.terminate()
+            time.sleep(0.05)
+            for p in proc:
+                p.close()
+            return
+
         eff /= max(1, won)
         t = time.perf_counter() - start
+
+        results = [(eff, won, guesses, t)]
+
+        # Collect the results from other processes
+        done = False
+        while not done:
+            try:
+                results.append(q.get(timeout=0.1))
+                if len(results) == MP:
+                    done = True
+            except Empty:
+                pass
+
+        won = sum(r[1] for r in results)
+        guesses = sum(r[2] for r in results)
+        # t = sum(r[3] for r in results)
+        eff = sum(r[0] * r[1] for r in results) / won
+
         stat = 'Games Won: {}\nTotal Guesses: {}\nEfficiency: {}\nTime Taken: {} s'
         self.statText = stat.format(won, guesses, round(eff, 3), round(t, 2))
         self.startGame()
