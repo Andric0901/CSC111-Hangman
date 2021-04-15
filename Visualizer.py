@@ -202,6 +202,9 @@ class Project(Frame):
             Coords(self.W*3//4 - 20, self.H*5//6 + 30, *dims)
             ]
 
+        self.incFFButton = Coords(self.W*5//6 + 10, self.H*3//5 - 10, 20, 20)
+        self.decFFButton = Coords(self.W*5//6 + 10, self.H*3//5 + 20, 20, 20)
+
         self.autoPlay = False
         self.playerGraph = None
         self.numFFGames = 100
@@ -475,7 +478,7 @@ class Project(Frame):
         for i in range(-self.numFFGames):
             self.player.clear_visited()
             result = hangman.run_game(self.player)
-            eff += result[0]
+            eff += result[0] * result[1]
             won += result[1]
             guesses += len(result[2]) - 1
             # Keep the UI somewhat responsive
@@ -494,7 +497,7 @@ class Project(Frame):
         # Indicates that we are finished running so enable the button
         self.numFFGames = -self.numFFGames
 
-        eff /= self.numFFGames
+        eff /= max(1, won)
         t = time.perf_counter() - start
         stat = 'Games Won: {}\nTotal Guesses: {}\nEfficiency: {}\nTime Taken: {} s'
         self.statText = stat.format(won, guesses, round(eff, 3), round(t, 2))
@@ -525,6 +528,11 @@ class Project(Frame):
 
         for i in range(len(self.buttons)):
             self.blend(frame, self.buttons[i], self.buttonPos[i].pos, 'alpha')
+
+        incButton = np.transpose(self.symbols[2][::2,::-2], (1,0,2))
+        decButton = np.transpose(self.symbols[3][::2,::-2], (1,0,2))
+        self.blend(frame, incButton, self.incFFButton.pos, 'alpha')
+        self.blend(frame, decButton, self.decFFButton.pos, 'alpha')
 
         status = self.hm.get_guess_status().upper()
         space = int(min(50, self.W*3/4 / len(status)))
@@ -650,9 +658,17 @@ class Project(Frame):
                 self.playerMakeGuess()
             if self.selected(evt.x, evt.y, self.buttonPos[1].bounds):
                 self.togglePlay()
-            if self.selected(evt.x, evt.y, self.buttonPos[2].bounds):
-                if self.numFFGames > 0:
+
+            if self.numFFGames > 0:
+                if self.selected(evt.x, evt.y, self.incFFButton.bounds):
+                    self.numFFGames *= 10
+                    self.numFFGames = min(1000000, self.numFFGames)
+                elif self.selected(evt.x, evt.y, self.decFFButton.bounds):
+                    self.numFFGames //= 10
+                    self.numFFGames = max(10, self.numFFGames)
+                elif self.selected(evt.x, evt.y, self.buttonPos[2].bounds):
                     self.runFFGames()
+
             if self.selected(evt.x, evt.y, self.buttonPos[3].bounds):
                 self.window = 'Menu'
                 self.loadMenuAssets()
