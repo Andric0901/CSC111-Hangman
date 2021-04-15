@@ -535,7 +535,8 @@ class Project(Frame):
             # Keep the UI somewhat responsive
             if time.perf_counter() - lastIdle > 0.3:
                 lastIdle = time.perf_counter()
-                self.statText = 'Running... {}/{}'.format(i * MP, -self.numFFGames)
+                estimate = min(-self.numFFGames, i * MP)
+                self.statText = 'Running... {}/{}'.format(estimate, -self.numFFGames)
                 updateTime = lastIdle
                 # This is not good practice, should use a different thread
                 # but since the button is disabled while running, it's okay
