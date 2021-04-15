@@ -285,9 +285,9 @@ class GraphPrevPlayer(GraphNextPlayer):
 
 
 class GraphAdjPlayer(GraphNextPlayer):
-    """This plaeyr combines both GraphNext and GraphPrev players.
-    It guesses letters adjacent to known letters.
-    In particular, it guesses the most likely / confident possiblity."""
+    """This player combines both the GraphNext and GraphPrev players.
+    It guesses letters adjacent to (both before and after) known letters.
+    In particular, it guesses the most confident possiblity."""
 
     def adjacent_guess(self, game: hangman.Hangman,
                        dry_run: bool = False) -> Optional[tuple[str, str, int]]:

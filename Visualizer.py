@@ -161,7 +161,6 @@ class Project(Frame):
         title = np.array(Image.open('Assets/Title_visualize.png'), 'float32')
         rects = np.array(Image.open('Assets/Rectangles.png'), 'float32')
         rects[:,:,:3] = 0
-        rects[:,:,3] *= 0.9
 
         bg = np.array(self.background)
         self.blend(bg, title, (self.W//2, self.H//8-40), 'add')
@@ -311,8 +310,6 @@ class Project(Frame):
         if self.selectedButton is not None:
             if self.selectedButton[0] == 6:
                 t = 'Human player: You!'
-            elif self.selectedButton[0] == 4:
-                t = 'Not implemented!'
             else:
                 t = getattr(hm_players, self.selectedButton[1]).__doc__
             self.texts.append(
@@ -465,6 +462,7 @@ class Project(Frame):
 
     def runFFGames(self) -> None:
         """Runs games fast-forward without visualization"""
+        self.autoPlay = False
         eff = 0
         won = 0
         guesses = 0
@@ -500,6 +498,7 @@ class Project(Frame):
         t = time.perf_counter() - start
         stat = 'Games Won: {}\nTotal Guesses: {}\nEfficiency: {}\nTime Taken: {} s'
         self.statText = stat.format(won, guesses, round(eff, 3), round(t, 2))
+        self.startGame()
 
     def renderVisualize(self) -> None:
         """Render the visualization screen"""
@@ -558,14 +557,14 @@ class Project(Frame):
                 self.texts.append(letter)
 
         gameInfo = 'Guesses Remaining: {}\nGuesses Made: {}\nEfficiency: {}\n' \
-                   'Correct Word: {}'
+                   '\nCorrect Word:\n{}'
         gameInfo = gameInfo.format(self.hm.get_num_tries(),
                                    self.guessCount,
                                    round(self.hm.get_efficiency_score(), 3),
                                    self.hm.get_chosen_word())
         self.texts.append(self.d.create_text(
-            self.W*3//4 - 20, self.H//4,
-            text=gameInfo, fill='#fff', font=('Times', 14)
+            self.W*2//3 - 35, self.H//4 + 20, text=gameInfo,
+            fill='#fff', font=('Times', 14), anchor=W
             ))
 
         texts = ['Faster' if self.autoPlay else 'Step',
