@@ -295,6 +295,11 @@ class GraphAdjPlayer(GraphNextPlayer):
         Returns (choice, s, index) where s is the known letter."""
         status = game.get_guess_status()
 
+        # This certainly helps!
+        if self.can_guess_word and game.get_num_tries() == 1 \
+           and status.count('?') == 1:
+            return
+
         # Each element of possible is (guess, confidence, known, index)
         possible = []
 
