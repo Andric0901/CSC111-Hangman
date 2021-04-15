@@ -13,6 +13,7 @@ Installation instructions (see requirements.txt):
 from __future__ import annotations
 from typing import Optional
 import random
+import time
 
 GAME_START_CHARACTER = '*'
 VALID_CHARACTERS = 'abcdefghijklmnopqrstuvwxyz'
@@ -72,7 +73,7 @@ class Hangman:
         # r = RandomWords()
         # return r.get_random_word(minLength=8).lower()
         with open('word_bank.txt') as file:
-            r = random.randint(0, int(file.readline()))
+            r = random.randint(0, int(file.readline()) - 1)
             return file.readlines()[r].strip('\n')
 
     def set_tries(self, tries: int) -> None:
@@ -250,23 +251,28 @@ class Player:
         self._visited_characters = set()
 
 
-################################################################################
 # Functions for running games
-################################################################################
-DEFAULT_FPS = 6  # Default number of moves per second to display in the visualization
 
+def run_games(n: int, player: Player) -> tuple[float, int, int, float]:
+    """Run n Hangman games.
 
-def run_games(n: int, white: Player, black: Player,
-              visualize: bool = False, fps: int = DEFAULT_FPS,
-              show_stats: bool = False) -> None:
-    """...
-
-        - TODO: Change the parameters; visualize, show_stats and fps are
-                no longer necessary
+    Return a tuple containing the efficiency score, number of games won,
+    total number of guesses, and time taken in seconds.
     """
-    # TODO: Fill in
-    #       Call run_game and maybe use for loops?
-    ...
+    eff = 0
+    won = 0
+    guesses = 0
+    start = time.perf_counter()
+    for i in range(n):
+        player.clear_visited()
+        result = run_game(player)
+        eff += result[0] * result[1]
+        won += result[1]
+        guesses += len(result[2]) - 1
+
+    eff /= max(1, won)
+    t = time.perf_counter() - start
+    return (eff, won, guesses, t)
 
 
 def run_game(player: Player, word: str = None,
