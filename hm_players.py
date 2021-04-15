@@ -284,6 +284,61 @@ class GraphPrevPlayer(GraphNextPlayer):
                     return (choice, s, i)
 
 
+class GraphAdjPlayer(GraphNextPlayer):
+    """This plaeyr combines both GraphNext and GraphPrev players.
+    It guesses letters adjacent to known letters.
+    In particular, it guesses the most likely / confident possiblity."""
+
+    def adjacent_guess(self, game: hangman.Hangman,
+                       dry_run: bool = False) -> Optional[tuple[str, str, int]]:
+        """Guess the letter adjacent to a known letter.
+        Returns (choice, s, index) where s is the known letter."""
+        status = game.get_guess_status()
+
+        # Each element of possible is (guess, confidence, known, index)
+        possible = []
+
+        for i in range(len(status) - 1):
+            n = status[i + 1]
+            p = status[i]
+            if (p in VALID_CHARACTERS) and (n == '?') and (p in self._graph):
+                possible.append((*self._next_helper(p), p, i + 1))
+            if (n in VALID_CHARACTERS) and (p == '?') and (n in self._graph):
+                possible.append((*self._prev_helper(n), n, i))
+
+        if len(possible) == 0:
+            return
+
+        choice = max(possible, key=lambda p: p[1])
+        if not dry_run:
+            self._visited_characters.add(choice[0])
+        return (choice[0], choice[2], choice[3])
+
+    def _next_helper(self, known: str) -> Optional[tuple[str, float]]:
+        """Helper function to guess next character
+        Returns (choice, confidence) or None"""
+        chars = {(w, self._graph.get_weight(known, w))
+                 for w in self._graph.get_neighbours(known)
+                 if w not in self._visited_characters}
+
+        if len(chars) > 0:
+            choice = max(chars, key=lambda p: p[1])
+            total_weight = self._graph.get_vertex_weight(known)
+            return (choice[0], choice[1] / total_weight)
+
+    def _prev_helper(self, known: str) -> Optional[tuple[str, float]]:
+        """Helper function to guess previous character
+        Returns (choice, confidence) or None"""
+        chars = {(w, self._graph.get_weight(w, known))
+                 for w in self._graph.get_all_vertices()
+                 if w not in self._visited_characters}
+
+        if len(chars) > 0:
+            choice = max(chars, key=lambda p: p[1])
+            total_weight = self._graph.get_vertex_weight(known)
+            return (choice[0], choice[1] / total_weight)
+
+
 class FrequentPlayer(hangman.Player):
     """A Hangman player that only guesses the frequently guessed characters.
 
