@@ -209,6 +209,7 @@ class Project(Frame):
         self.incFFButton = Coords(self.W*5//6 + 10, self.H*3//5 - 10, 20, 20)
         self.decFFButton = Coords(self.W*5//6 + 10, self.H*3//5 + 20, 20, 20)
 
+        self.isHumanPlayer = False
         self.autoPlay = False
         self.playerGraph = None
         self.numFFGames = 100
@@ -317,7 +318,7 @@ class Project(Frame):
 
         if self.selectedButton is not None:
             if self.selectedButton[0] == 6:
-                t = 'Human player: You!'
+                t = 'Human player: You!\nType a key to guess that letter.'
             else:
                 t = getattr(hm_players, self.selectedButton[1]).__doc__
             self.texts.append(
@@ -360,7 +361,16 @@ class Project(Frame):
         """Initializes a Hangman game"""
         playerClass = getattr(hm_players, self.selectedButton[1], None)
         self.gameGraph = None
-        if playerClass is hm_players.RandomPlayer:
+
+        if playerClass is None:
+            # Human Player
+            self.player = hangman.Player
+            self.playerGraph = None
+            self.isHumanPlayer = True
+            self.d.bind('<Key>', self.userMakeGuess)
+            self.d.focus_set()
+
+        elif playerClass is hm_players.RandomPlayer:
             self.player = playerClass()
             self.playerGraph = None
         else:
@@ -379,9 +389,10 @@ class Project(Frame):
         self.guessCount = 0
 
     def playerMakeGuess(self) -> None:
+        """Let the AI make a guess"""
         if self.hm.game_is_finished():
             self.startGame()
-            self.player._visited_characters = set()
+            self.player.clear_visited()
             if self.autoPlay:
                 self.d.after(400, self.playerMakeGuess)
             return
@@ -393,6 +404,20 @@ class Project(Frame):
         wait = 1200 if self.hm.game_is_finished() else 400
         if self.autoPlay:
             self.d.after(wait, self.playerMakeGuess)
+
+    def userMakeGuess(self, evt) -> None:
+        """Allow the human user to make a guess by typing a key"""
+        if self.hm.game_is_finished():
+            self.startGame()
+            return
+        guess = evt.char
+        if guess in hangman.VALID_CHARACTERS:
+            self.hm.make_guess(guess)
+            self.guessCount += 1
+            self.statText = 'Guess: {}'.format(guess)
+            return
+
+        self.statText = 'Invalid input!'
 
     def togglePlay(self) -> None:
         self.autoPlay = not self.autoPlay
@@ -617,12 +642,16 @@ class Project(Frame):
                     )
                 self.texts.append(letter)
 
-        gameInfo = 'Guesses Remaining: {}\nGuesses Made: {}\nEfficiency: {}\n' \
-                   '\nCorrect Word:\n{}'
+        gameInfo = 'Guesses Remaining: {}\nGuesses Made: {}\nEfficiency: {}\n'
         gameInfo = gameInfo.format(self.hm.get_num_tries(),
                                    self.guessCount,
-                                   round(self.hm.get_efficiency_score(), 3),
-                                   self.hm.get_chosen_word())
+                                   round(self.hm.get_efficiency_score(), 3))
+
+        # Certainly don't want to reveal the answer too soon!
+        lost = self.hm.game_is_finished() and self.hm.get_num_tries() == 0
+        if not self.isHumanPlayer or lost:
+            gameInfo += '\nCorrect Word:\n{}'.format(self.hm.get_chosen_word())
+
         self.texts.append(self.d.create_text(
             self.W*2//3 - 35, self.H//4 + 20, text=gameInfo,
             fill='#fff', font=('Times', 14), anchor=W
@@ -710,20 +739,21 @@ class Project(Frame):
                 self.num_processes = max(1, self.num_processes % 9)
 
         elif self.window == 'Visualize':
-            if self.selected(evt.x, evt.y, self.buttonPos[0].bounds):
-                self.playerMakeGuess()
-            if self.selected(evt.x, evt.y, self.buttonPos[1].bounds):
-                self.togglePlay()
+            if not self.isHumanPlayer:
+                if self.selected(evt.x, evt.y, self.buttonPos[0].bounds):
+                    self.playerMakeGuess()
+                if self.selected(evt.x, evt.y, self.buttonPos[1].bounds):
+                    self.togglePlay()
 
-            if self.numFFGames > 0:
-                if self.selected(evt.x, evt.y, self.incFFButton.bounds):
-                    self.numFFGames *= 10
-                    self.numFFGames = min(1000000, self.numFFGames)
-                elif self.selected(evt.x, evt.y, self.decFFButton.bounds):
-                    self.numFFGames //= 10
-                    self.numFFGames = max(10, self.numFFGames)
-                elif self.selected(evt.x, evt.y, self.buttonPos[2].bounds):
-                    self.runFFGames(self.num_processes)
+                if self.numFFGames > 0:
+                    if self.selected(evt.x, evt.y, self.incFFButton.bounds):
+                        self.numFFGames *= 10
+                        self.numFFGames = min(1000000, self.numFFGames)
+                    elif self.selected(evt.x, evt.y, self.decFFButton.bounds):
+                        self.numFFGames //= 10
+                        self.numFFGames = max(10, self.numFFGames)
+                    elif self.selected(evt.x, evt.y, self.buttonPos[2].bounds):
+                        self.runFFGames(self.num_processes)
 
             if self.selected(evt.x, evt.y, self.buttonPos[3].bounds):
                 self.window = 'Menu'
