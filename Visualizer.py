@@ -152,10 +152,12 @@ class Project(Frame):
 
         self.selectedButton = None
         self.can_guess_word = True
+        self.num_processes = 1
 
         self.button3 = np.array(Image.open('Assets/Button3.png').resize((144, 48)),
                                 'float32')
         self.wordButton = Coords(self.W*3//4 + 10, self.H*3//4 + 10, 72, 24)
+        self.procButton = Coords(self.W*3//4 + 10, self.H*3//4 + 70, 72, 24)
 
     def loadVisualizeAssets(self) -> None:
         """Opens image assets used in visualization screen"""
@@ -289,6 +291,7 @@ class Project(Frame):
             self.blend(frame, self.symbols[i], (px - 92, py), 'alpha')
 
         self.blend(frame, self.button3, self.wordButton.pos, 'alpha')
+        self.blend(frame, self.button3, self.procButton.pos, 'alpha')
 
         self.blendCursor(frame)
         self.displayImage(frame)
@@ -325,20 +328,27 @@ class Project(Frame):
                     )
                 )
 
-        self.texts.append(
-            self.d.create_text(
-                self.W//2 - 30, self.H*3//4 + 10,
-                text='Can guess entire words:', fill='#000',
-                anchor=W, font=('Times', 15)
-                )
-            )
-        self.texts.append(
-            self.d.create_text(
-                *self.wordButton.pos,
-                text=str(self.can_guess_word), fill='#fff',
-                font=('Times', 15)
-                )
-            )
+        self.texts.append(self.d.create_text(
+            self.W//2 - 30, self.wordButton.pos[1],
+            text='Can guess entire words:', fill='#000',
+            anchor=W, font=('Times', 15)
+            ))
+        self.texts.append(self.d.create_text(
+            *self.wordButton.pos,
+            text=str(self.can_guess_word), fill='#fff',
+            font=('Times', 15)
+            ))
+
+        self.texts.append(self.d.create_text(
+            self.W//2 - 30, self.procButton.pos[1],
+            text='Multiprocessing threads:', fill='#000',
+            anchor=W, font=('Times', 15)
+            ))
+        self.texts.append(self.d.create_text(
+            *self.procButton.pos,
+            text=str(self.num_processes), fill='#fff',
+            font=('Times', 15)
+            ))
 
         self.canvasItems = self.texts
 
@@ -465,7 +475,7 @@ class Project(Frame):
 
         return (int(px * r) + offx, int(py * r) + offy)
 
-    def runFFGames(self, num_processes: int = 3) -> None:
+    def runFFGames(self, num_processes: int = 1) -> None:
         """Runs games fast-forward without visualization
         Uses mutiprocessing with num_processes threads total
         including the main thread"""
@@ -530,10 +540,10 @@ class Project(Frame):
         # Collect the results from other processes
         done = False
         while not done:
+            if len(results) == MP:
+                done = True
             try:
                 results.append(q.get(timeout=0.1))
-                if len(results) == MP:
-                    done = True
             except Empty:
                 pass
 
@@ -695,6 +705,9 @@ class Project(Frame):
                     return
             if self.selected(evt.x, evt.y, self.wordButton.bounds):
                 self.toggleWordGuess()
+            if self.selected(evt.x, evt.y, self.procButton.bounds):
+                self.num_processes += 1
+                self.num_processes = max(1, self.num_processes % 9)
 
         elif self.window == 'Visualize':
             if self.selected(evt.x, evt.y, self.buttonPos[0].bounds):
@@ -710,7 +723,7 @@ class Project(Frame):
                     self.numFFGames //= 10
                     self.numFFGames = max(10, self.numFFGames)
                 elif self.selected(evt.x, evt.y, self.buttonPos[2].bounds):
-                    self.runFFGames()
+                    self.runFFGames(self.num_processes)
 
             if self.selected(evt.x, evt.y, self.buttonPos[3].bounds):
                 self.window = 'Menu'
