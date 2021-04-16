@@ -1,14 +1,4 @@
-"""Simple Hangman Game.
-
-# TODO: move this to main.py
-
-Installation instructions (see requirements.txt):
-
-    - Upgrade PIP to the latest version
-    - Install numpy (pip install numpy)
-    - Install Pillow (pip install Pillow)
-    - Install pyenchant (pip install pyenchant)
-"""
+"""Simple Hangman Game."""
 from __future__ import annotations
 from typing import Optional
 import random
