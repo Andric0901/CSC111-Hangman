@@ -764,12 +764,11 @@ class Project(Frame):
 
     def clicked(self, evt) -> None:
         """Handle click events"""
-        print(evt.x, evt.y)
         if self.window == 'Menu':
             if self.selected(evt.x, evt.y, self.buttonPos[0].bounds):
-                print("Button 0 pressed")
+                print('Nothing happened...')
             if self.selected(evt.x, evt.y, self.buttonPos[1].bounds):
-                print("Button 1 pressed")
+                print('A warm current passes through the water...')
             if self.selected(evt.x, evt.y, self.buttonPos[2].bounds):
                 self.window = 'Select'
                 self.loadSelectionAssets()
@@ -891,4 +890,4 @@ if __name__ == "__main__":
     a = Project()
     a.start()
     a.mainloop()
-    print("FPS:", a.totFrames / (time.time() - a.startTime))
+    print('FPS:', a.totFrames / (time.time() - a.startTime))
