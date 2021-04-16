@@ -5,7 +5,6 @@
 Installation instructions (see requirements.txt):
 
     - Upgrade PIP to the latest version
-    - Install PyYAML (pip install pyyaml)
     - Install numpy (pip install numpy)
     - Install Pillow (pip install Pillow)
     - Install pyenchant (pip install pyenchant)
