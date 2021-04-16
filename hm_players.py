@@ -12,7 +12,7 @@ import random
 from typing import Optional, Any
 import enchant
 
-from hm_game_graph import _WeightedVertex, GameGraph
+from hm_game_graph import GameGraph
 import hangman
 
 VALID_CHARACTERS = 'abcdefghijklmnopqrstuvwxyz'
@@ -90,28 +90,36 @@ class RandomGraphPlayer(hangman.Player):
         if previous_character is None:
             # First guess, choose randomly among all the vertices
             return self._random_vertex_guess()
-        else:
-            # Not first guess, makes random guesses based on neighbours
-            try:
-                get_previous_vertex = self._graph.get_vertex_by_item(previous_character)
-            except ValueError:
-                random_item = random.choice(list(self._graph.get_all_vertices()))
-                get_previous_vertex = self._graph.get_vertex_by_item(random_item)
-            all_neighbouring_vertices = [v for v in get_previous_vertex.neighbours]
-            if len(all_neighbouring_vertices) == 0:
-                # If there are no neighbours (highly unlikely), guess random character
-                return self._random_character_guess()
+
+        # Not first guess, makes random guesses based on neighbours
+        try:
+            prev_neighbours = self._graph.get_neighbours(previous_character)
+        except KeyError:
+            random_item = random.choice(list(self._graph.get_all_vertices()))
+            prev_neighbours = self._graph.get_neighbours(random_item)
+
+        all_neighbouring_vertices = prev_neighbours
+        if len(all_neighbouring_vertices) == 0:
+            # If there are no neighbours (highly unlikely), guess random character
+            return self._random_character_guess()
+
+        # If there are at least one neighbour, guess randomly among its neighbours
+        all_neighbouring_vertices_copy = list(all_neighbouring_vertices)
+
+        while True:
+            chosen_vertex = random.choice(all_neighbouring_vertices_copy)
+            if chosen_vertex not in self._visited_characters:
+                break
+            elif len(all_neighbouring_vertices_copy) == 1:
+                break
             else:
-                # If there are at least one neighbour, guess randomly among its neighbours
-                all_neighbouring_vertices_copy = all_neighbouring_vertices.copy()
-                chosen_vertex = random.choice(all_neighbouring_vertices_copy)
-                self._mutate_all_neighbouring_vertices(chosen_vertex,
-                                                       all_neighbouring_vertices_copy)
-                if (len(all_neighbouring_vertices_copy)) == 0:
-                    return self._random_vertex_guess()
-                else:
-                    self._visited_characters.add(chosen_vertex.item)
-                    return chosen_vertex.item
+                all_neighbouring_vertices_copy.remove(chosen_vertex)
+
+        if (len(all_neighbouring_vertices_copy)) == 0:
+            return self._random_vertex_guess()
+
+        self._visited_characters.add(chosen_vertex)
+        return chosen_vertex
 
     # The following three private methods are to satisfy PythonTA; we have divided up the
     # make_guess method above with three helper methods to simplify large nested
@@ -134,25 +142,6 @@ class RandomGraphPlayer(hangman.Player):
             random_character = random.choice(all_characters_list)
         self._visited_characters.add(random_character)
         return random_character
-
-    def _mutate_all_neighbouring_vertices(self, chosen_vertex: _WeightedVertex,
-                                          all_neighbouring_vertices_copy:
-                                          list[_WeightedVertex]) -> None:
-        """Mutate the all_neighbouring_vertices_copy.
-        Specifically, remove each vertex from this shallow copy until either the
-        chosen_vertex contains the wanted (valid) item, or all the elements of
-        all_neighbouring_vertices_copy have been removed.
-        """
-        while True:
-            if chosen_vertex.item not in self._visited_characters or \
-                    len(all_neighbouring_vertices_copy) == 0:
-                break
-            else:
-                all_neighbouring_vertices_copy.remove(chosen_vertex)
-                if len(all_neighbouring_vertices_copy) == 0:
-                    break
-                else:
-                    chosen_vertex = random.choice(all_neighbouring_vertices_copy)
 
 
 class GraphNextPlayer(hangman.Player):

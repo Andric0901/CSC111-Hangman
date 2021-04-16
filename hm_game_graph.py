@@ -1,31 +1,26 @@
 """The Hangman GameGraph"""
 
 from __future__ import annotations
-# from typing import Optional
 
 VALID_CHARACTERS = 'abcdefghijklmnopqrstuvwxyz'
 
 
-class _WeightedVertex:
-    """A weighted vertex representing a character
+class _VertexWeight:
+    """Data class for a weighted vertex in a directed graph.
 
-    Neighbours are letters that appear next to this character
-    Weight of each neighbour is relative to total
+    Edges are outgoing.
+    Weight of each edge is relative to total_weight.
 
     Representation invariant:
-        - sum(neighbours.values()) == total_weight
+        - sum(self.edges.values()) == self.total_weight
     """
-    item: str
     total_weight: float
-    neighbours: dict[_WeightedVertex, float]
+    edges: dict[str, float]
 
-    def __init__(self, item: str) -> None:
-        """Initialize a new vertex with the given item and kind.
-
-        This vertex is initialized with no neighbours."""
-        self.item = item
+    def __init__(self) -> None:
+        """Initialize a new vertex."""
         self.total_weight = 0
-        self.neighbours = {}
+        self.edges = {}
 
 
 class GameGraph:
@@ -37,58 +32,37 @@ class GameGraph:
 
     # Private Instance Attribute
     #   - _vertices: collection of vertices contained in this graph
-    _vertices: dict[str, _WeightedVertex]
+    _verts: dict[str, _VertexWeight]
 
     def __init__(self) -> None:
-        """Initializes an empty GameGraph.
-
-        >>> game = GameGraph()
-        """
-        self._vertices = {}
+        """Initializes an empty GameGraph."""
+        self._verts = {}
 
     def add_vertex(self, item: str) -> None:
-        """Add a vertex with the given item to this graph.
-
-        The new vertex is not adjacent to any other vertices.
-        Do nothing if the given item is already in this graph.
-        """
-        if item not in self._vertices:
-            self._vertices[item] = _WeightedVertex(item)
+        """Add a vertex with the given item to this graph."""
+        if item not in self._verts:
+            self._verts[item] = _VertexWeight()
 
     def __contains__(self, item: str) -> bool:
         """Check if item is in graph"""
-        return item in self._vertices
-
-    def get_vertex_by_item(self, item: str) -> _WeightedVertex:
-        """Return the weighted vertex that contains the item.
-
-        Raise ValueError if no such item is present in the GameGraph.
-        """
-        if item in self._vertices:
-            return self._vertices[item]
-        else:
-            raise ValueError
+        return item in self._verts
 
     def accumulate_edge(self, item1: str, item2: str, weight: float = 1) -> None:
-        """Adds value to the DIRECTED edge between the two vertices in this graph.
-
-        Raise a ValueError if item1 or item2 do not appear as vertices in this graph.
+        """Adds weight to the DIRECTED edge between item1 and item2.
 
         Preconditions:
+            - item1 and item2 are in the graph
             - item1 != item2
         """
-        if item1 in self._vertices and item2 in self._vertices:
-            v1 = self._vertices[item1]
-            v2 = self._vertices[item2]
+        v1 = self._verts[item1]
+        v2 = self._verts[item2]
 
-            v1.total_weight += weight
+        v1.total_weight += weight
 
-            if v2 in v1.neighbours:
-                v1.neighbours[v2] += weight
-            else:
-                v1.neighbours[v2] = weight
+        if v2 in v1.edges:
+            v1.edges[item2] += weight
         else:
-            raise ValueError
+            v1.edges[item2] = weight
 
     def get_weight(self, item1: str, item2: str) -> float:
         """Return the weight of the DIRECTED edge from item1 to item2
@@ -96,23 +70,22 @@ class GameGraph:
         Return 0 if item1 and item2 are not adjacent.
 
         Preconditions:
-            - item1 and item2 are vertices in this graph
+            - item1 and item2 are in the graph
         """
-        v1 = self._vertices[item1]
-        v2 = self._vertices[item2]
-        return v1.neighbours.get(v2, 0)
+        v1 = self._verts[item1]
+        return v1.edges.get(item2, 0)
 
     def get_vertex_weight(self, item: str) -> float:
         """Return total weight of item node"""
-        return self._vertices[item].total_weight
+        return self._verts[item].total_weight
 
     def get_all_vertices(self) -> set:
         """Return all vertex items"""
-        return set(self._vertices.keys())
+        return set(self._verts.keys())
 
-    def get_neighbours(self, item: str) -> set:
-        """Return the neighbours of item node"""
-        return {v.item for v in self._vertices[item].neighbours.keys()}
+    def get_neighbours(self, item: str) -> set[str]:
+        """Return the neighbours of item vertex"""
+        return set(self._verts[item].edges.keys())
 
     def insert_character_sequence(self, characters: str) -> None:
         """Insert the given sequence of characters into this tree.
@@ -131,16 +104,3 @@ class GameGraph:
         for i in range(len(characters) - 1):
             self.accumulate_edge(characters[i], characters[i + 1], 1)
 
-
-# if __name__ == '__main__':
-#     import doctest
-#     doctest.testmod()
-#
-#     import python_ta.contracts
-#     python_ta.contracts.check_all_contracts()
-#     python_ta.check_all(config={
-#         'extra-imports': [],
-#         'allowed-io': ['open', 'print'],
-#         'max-line-length': 100,
-#         'disable': ['E1136']
-#     })
