@@ -380,6 +380,7 @@ class Project(Frame):
             self.isHumanPlayer = True
             self.d.bind('<Key>', self.userMakeGuess)
             self.d.focus_set()
+            self.guessed_chars = set()
 
         elif playerClass is hm_players.RandomPlayer:
             self.player = playerClass()
@@ -425,19 +426,24 @@ class Project(Frame):
             self.humanStats['Guesses'] += self.guessCount
             self.humanStats['Efficiency'] += [self.hm.get_efficiency_score()] * won
 
+            totNum = self.humanStats['Total']
             totWon = self.humanStats['Won']
             totGuess = self.humanStats['Guesses']
             totEff = sum(self.humanStats['Efficiency']) / max(1, totWon)
             totTime = time.time() - self.humanStats['Time']
 
-            stat = 'Games Won: {}\nTotal Guesses: {}\nEfficiency: {}\nTime Taken: {} s'
+            stat = 'Games Won: {}/{}\nTotal Guesses: {}\nEfficiency: {}\nTime Taken: {} s'
             self.statText = stat.format(
-                totWon, totGuess, round(totEff, 3), round(totTime, 2))
+                totWon, totNum, totGuess, round(totEff, 3), round(totTime, 2))
             self.startGame()
             return
         guess = evt.char
         if guess in hangman.VALID_CHARACTERS:
+            if guess in self.guessed_chars:
+                self.guessText = 'Already guessed {}!'.format(guess.upper())
+                return
             self.hm.make_guess(guess)
+            self.guessed_chars.add(guess)
             self.guessCount += 1
             self.guessText = 'Guess: {}'.format(guess)
             return
@@ -703,7 +709,7 @@ class Project(Frame):
             ))
 
         self.texts.append(self.d.create_text(
-            self.W*2//5 - 30, self.H*2//3,
+            self.W*2//5 - 35, self.H*2//3,
             text=self.guessText,
             fill='#fff', font=('Times', 14), anchor=W
             ))
