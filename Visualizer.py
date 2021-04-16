@@ -99,10 +99,7 @@ class Project(Frame):
         self.button = np.array(Image.open('Assets/Button.png'), 'float32')
 
         # Copy so we can change the intensity of each button individually
-        self.buttons = [np.array(self.button),
-                        np.array(self.button),
-                        np.array(self.button),
-                        np.array(self.button)]
+        self.buttons = [np.array(self.button) for _ in range(4)]
 
         dims = (120, 60)
         self.buttonPos = [
@@ -459,6 +456,7 @@ class Project(Frame):
         self.guessText = 'Invalid input!'
 
     def togglePlay(self) -> None:
+        """Toggles a timer to make one step per 0.4 seconds"""
         self.autoPlay = not self.autoPlay
         if self.autoPlay:
             self.d.after(400, self.playerMakeGuess)
@@ -624,7 +622,6 @@ class Project(Frame):
 
         won = sum(r[1] for r in results)
         guesses = sum(r[2] for r in results)
-        # t = sum(r[3] for r in results)
         eff = sum(r[0] * r[1] for r in results) / won
 
         stat = 'Games Won: {}\nTotal Guesses: {}\nEfficiency: {}\nTime Taken: {} s'
@@ -743,7 +740,6 @@ class Project(Frame):
         for i in range(len(self.buttons)):
             self.updateButton(i, x, y, self.buttonPos[i].bounds)
 
-        # This takes the most time
         if self.window == 'Menu':
             self.renderMenu()
         elif self.window == 'Select':
@@ -837,11 +833,11 @@ class Project(Frame):
         return bounds[0] < x < bounds[2] and bounds[1] < y < bounds[3]
 
     def blend(self, dest: np.array, source: np.array,
-              coords: tuple, method="alpha") -> None:
+              coords: tuple, method='alpha') -> None:
         """Blend image source onto dest, centered at coords (x, y)
 
         Preconditions:
-            - method in {"alpha", "add", "screen", "replace"}
+            - method in {'alpha', 'add', 'screen', 'replace'}
         """
         left = coords[0] - (source.shape[1]//2)
         right = left + source.shape[1]
@@ -886,7 +882,7 @@ class Project(Frame):
             dest[up:down, left:right] = source
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     a = Project()
     a.start()
     a.mainloop()
