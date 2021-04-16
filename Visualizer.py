@@ -214,6 +214,9 @@ class Project(Frame):
         self.playerGraph = None
         self.numFFGames = 100
         self.statText = ''
+        self.guessText = ''
+        self.humanStats = {'Total': 0, 'Won': 0, 'Guesses': 0,
+                           'Efficiency':[], 'Time': time.time()}
         self.startGame()
 
     def start(self) -> None:
@@ -232,6 +235,14 @@ class Project(Frame):
         self.d.config(background='#000', cursor='none')
         self.d.bind('<Button-1>', self.clicked)
         self.finalRender = self.d.create_image((self.W/2, self.H/2))
+
+        self.d.bind('<F2>', self.screenshot)
+        self.d.focus_set()
+
+    def screenshot(self, evt=None) -> None:
+        """Take a screenshot!"""
+        ts = time.strftime('%Y %b %d %H-%M-%S', time.gmtime())
+        self.frameImg.save('Screenshot {}.png'.format(ts))
 
     def renderMenu(self) -> None:
         """Render the main menu"""
@@ -408,16 +419,30 @@ class Project(Frame):
     def userMakeGuess(self, evt) -> None:
         """Allow the human user to make a guess by typing a key"""
         if self.hm.game_is_finished():
+            won = self.hm.get_num_tries() > 0
+            self.humanStats['Total'] += 1
+            self.humanStats['Won'] += won
+            self.humanStats['Guesses'] += self.guessCount
+            self.humanStats['Efficiency'] += [self.hm.get_efficiency_score()] * won
+
+            totWon = self.humanStats['Won']
+            totGuess = self.humanStats['Guesses']
+            totEff = sum(self.humanStats['Efficiency']) / max(1, totWon)
+            totTime = time.time() - self.humanStats['Time']
+
+            stat = 'Games Won: {}\nTotal Guesses: {}\nEfficiency: {}\nTime Taken: {} s'
+            self.statText = stat.format(
+                totWon, totGuess, round(totEff, 3), round(totTime, 2))
             self.startGame()
             return
         guess = evt.char
         if guess in hangman.VALID_CHARACTERS:
             self.hm.make_guess(guess)
             self.guessCount += 1
-            self.statText = 'Guess: {}'.format(guess)
+            self.guessText = 'Guess: {}'.format(guess)
             return
 
-        self.statText = 'Invalid input!'
+        self.guessText = 'Invalid input!'
 
     def togglePlay(self) -> None:
         self.autoPlay = not self.autoPlay
@@ -662,26 +687,26 @@ class Project(Frame):
                  'Pause' if self.autoPlay else 'Play',
                  str(abs(self.numFFGames)), 'Finish']
         for i in range(len(self.buttons)):
-            self.texts.append(
-                self.d.create_text(
-                    *self.buttonPos[i].pos,
-                    text=texts[i], fill='#fff', font=('Times', 22)
-                    )
-                )
-        self.texts.append(
-            self.d.create_text(
-                self.W*2//3 - 40, self.H*3//5 + 5,
-                text='Run Games:', fill='#000', font=('Times', 18)
-                )
-            )
+            self.texts.append(self.d.create_text(
+                *self.buttonPos[i].pos,
+                text=texts[i], fill='#fff', font=('Times', 22)
+                ))
+        self.texts.append(self.d.create_text(
+            self.W*2//3 - 40, self.H*3//5 + 5,
+            text='Run Games:', fill='#000', font=('Times', 18)
+            ))
 
-        self.texts.append(
-            self.d.create_text(
-                self.W*2//3 - 40, self.H*3//4,
-                text=self.statText,
-                fill='#fff', font=('Times', 14), anchor=W
-                )
-            )
+        self.texts.append( self.d.create_text(
+            self.W*2//3 - 40, self.H*3//4,
+            text=self.statText,
+            fill='#fff', font=('Times', 14), anchor=W
+            ))
+
+        self.texts.append(self.d.create_text(
+            self.W*2//5 - 30, self.H*2//3,
+            text=self.guessText,
+            fill='#fff', font=('Times', 14), anchor=W
+            ))
 
         self.canvasItems = self.texts
 
@@ -767,8 +792,8 @@ class Project(Frame):
         """
         frame[:,:,3] = 255
         np.minimum(frame, 255, out=frame)
-        i = Image.fromarray(frame.astype("uint8"))
-        self.cf = ImageTk.PhotoImage(i)
+        self.frameImg = Image.fromarray(frame.astype("uint8"))
+        self.cf = ImageTk.PhotoImage(self.frameImg)
         self.d.itemconfigure(self.finalRender, image=self.cf)
 
     def blendCursor(self, frame: np.array) -> None:
