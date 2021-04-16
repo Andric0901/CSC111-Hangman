@@ -727,7 +727,7 @@ class Project(Frame):
             ))
 
         self.texts.append(self.d.create_text(
-            self.W*2//5 - 30, self.H*2//3 - 20,
+            self.W*2//5 - 20, self.H*2//3 - 20,
             text=self.guessText,
             fill='#fff', font=('Times', 14), anchor=N + W
             ))
