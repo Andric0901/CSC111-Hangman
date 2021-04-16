@@ -1,5 +1,13 @@
 """The Hangman GameGraph"""
 
+# This graph implementation uses a similar public interface
+# to the graphs from CSC111 Assignment 3, but uses a completely
+# different (with all due respect to the triviality of the methods)
+# implementation. Furthermore, reimplementing an API constitutes
+# fair use, as affirmed by the US Supreme Court (Oracle v. Google).
+# Hence, we believe that including this code in our project does
+# not violate the CSC111 copyright.
+
 from __future__ import annotations
 
 VALID_CHARACTERS = 'abcdefghijklmnopqrstuvwxyz'
@@ -31,7 +39,7 @@ class GameGraph:
     """
 
     # Private Instance Attribute
-    #   - _vertices: collection of vertices contained in this graph
+    #   - _verts: the vertices in this graph
     _verts: dict[str, _VertexWeight]
 
     def __init__(self) -> None:
@@ -49,31 +57,29 @@ class GameGraph:
 
     def accumulate_edge(self, item1: str, item2: str, weight: float = 1) -> None:
         """Adds weight to the DIRECTED edge between item1 and item2.
+        item1 and item2 need not be distinct.
 
         Preconditions:
             - item1 and item2 are in the graph
-            - item1 != item2
         """
         v1 = self._verts[item1]
-        v2 = self._verts[item2]
 
         v1.total_weight += weight
 
-        if v2 in v1.edges:
+        if item2 in v1.edges:
             v1.edges[item2] += weight
         else:
             v1.edges[item2] = weight
 
     def get_weight(self, item1: str, item2: str) -> float:
         """Return the weight of the DIRECTED edge from item1 to item2
-
-        Return 0 if item1 and item2 are not adjacent.
+        Returns 0 if such edge does not exist.
 
         Preconditions:
             - item1 and item2 are in the graph
         """
         v1 = self._verts[item1]
-        return v1.edges.get(item2, 0)
+        return v1.edges[item2] if item2 in v1.edges else 0
 
     def get_vertex_weight(self, item: str) -> float:
         """Return total weight of item node"""
