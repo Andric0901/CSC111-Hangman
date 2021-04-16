@@ -372,6 +372,7 @@ class Project(Frame):
         """Initializes a Hangman game"""
         playerClass = getattr(hm_players, self.selectedButton[1], None)
         self.gameGraph = None
+        self.guessText = ''
 
         if playerClass is None:
             # Human Player
@@ -410,6 +411,10 @@ class Project(Frame):
             return
 
         guess = self.player.make_guess(self.hm, '')
+
+        if len(guess) > 1:
+            self.guessText = 'Guess entire word!\n' + guess
+
         self.hm.make_guess(guess)
         self.guessCount += 1
 
@@ -437,7 +442,10 @@ class Project(Frame):
                 totWon, totNum, totGuess, round(totEff, 3), round(totTime, 2))
             self.startGame()
             return
+
         guess = evt.char
+        if guess == '':
+            return
         if guess in hangman.VALID_CHARACTERS:
             if guess in self.guessed_chars:
                 self.guessText = 'Already guessed {}!'.format(guess.upper())
@@ -445,7 +453,7 @@ class Project(Frame):
             self.hm.make_guess(guess)
             self.guessed_chars.add(guess)
             self.guessCount += 1
-            self.guessText = 'Guess: {}'.format(guess)
+            self.guessText = 'Guess: {}'.format(guess.upper())
             return
 
         self.guessText = 'Invalid input!'
@@ -473,54 +481,64 @@ class Project(Frame):
     def renderAdjGuess(self, frame: np.array, left: int, space: int) -> None:
         """Renders edges and vertices corresponding to an adjacent guess"""
         guess = self.player.adjacent_guess(self.hm, True)
-        if guess is not None:
-            rad = self.gameGraph.shape[0] / 2
-            offx, offy = self.W//4, self.H*3//4
+        if guess is None:
+            return
 
-            choice, known, index = guess
-            vn = sorted(self.playerGraph.get_all_vertices())
-            n = len(vn)
-            k = vn.index(known)
-            c = vn.index(choice)
+        rad = self.gameGraph.shape[0] / 2
+        offx, offy = self.W//4, self.H*3//4
 
+        choice, known, index = guess
+        vn = sorted(self.playerGraph.get_all_vertices())
+        n = len(vn)
+        k = vn.index(known)
+        c = vn.index(choice)
+
+        self.texts.append(self.d.create_text(
+            *self.circleCoords(k / n, rad, offx, offy),
+            text=known.upper(), fill='#fff', font=('Times', 18))
+            )
+        self.texts.append(self.d.create_text(
+            *self.circleCoords(c / n, rad, offx, offy),
+            text=choice.upper(), fill='#ff8', font=('Times', 18))
+            )
+
+        totw = self.playerGraph.get_vertex_weight(known)
+        w = round(self.playerGraph.get_weight(known, choice) / totw, 3)
+        info = 'Adjacent {}\n{}:  {}'
+        self.guessText = info.format(known.upper(), choice.upper(), w)
+
+        edges = Image.new('RGBA', self.gameGraph.shape[:2])
+        draw = ImageDraw.Draw(edges)
+
+        possible = {(w, self.playerGraph.get_weight(known, w))
+                    for w in self.playerGraph.get_neighbours(known)}
+        alternatives = sorted(possible, key=lambda p: p[1], reverse=True)[:5]
+
+        for letter in alternatives:
+            i = vn.index(letter[0])
+            if i == c or i == k:
+                continue
             self.texts.append(self.d.create_text(
-                *self.circleCoords(k / n, rad, offx, offy),
-                text=known.upper(), fill='#fff', font=('Times', 18))
+                *self.circleCoords(i / n, rad, offx, offy),
+                text=letter[0].upper(), fill='#bcc', font=('Times', 18))
                 )
-            self.texts.append(self.d.create_text(
-                *self.circleCoords(c / n, rad, offx, offy),
-                text=choice.upper(), fill='#ff8', font=('Times', 18))
-                )
+            draw.line(self.circleCoords(i / n, rad - 12, rad, rad) + \
+                  self.circleCoords(k / n, rad - 12, rad, rad),
+                  fill=(160, 192, 192, 255), width=2)
 
-            edges = Image.new('RGBA', self.gameGraph.shape[:2])
-            draw = ImageDraw.Draw(edges)
-
-            possible = {(w, self.playerGraph.get_weight(known, w))
-                        for w in self.playerGraph.get_neighbours(known)}
-            alternatives = sorted(possible, key=lambda p: p[1], reverse=True)[:5]
-
-            for letter in alternatives:
-                i = vn.index(letter[0])
-                if i == c or i == k:
-                    continue
-                self.texts.append(self.d.create_text(
-                    *self.circleCoords(i / n, rad, offx, offy),
-                    text=letter[0].upper(), fill='#bcc', font=('Times', 18))
-                    )
-                draw.line(self.circleCoords(i / n, rad - 12, rad, rad) + \
-                      self.circleCoords(k / n, rad - 12, rad, rad),
-                      fill=(160, 192, 192, 255), width=2)
+            self.guessText += '\n{}:  {}'.format(letter[0].upper(),
+                                                 round(letter[1] / totw, 3))
 
 
-            draw.line(self.circleCoords(k / n, rad - 12, rad, rad) + \
-                      self.circleCoords(c / n, rad - 12, rad, rad),
-                      fill=(255, 255, 128, 255), width=3)
+        draw.line(self.circleCoords(k / n, rad - 12, rad, rad) + \
+                  self.circleCoords(c / n, rad - 12, rad, rad),
+                  fill=(255, 255, 128, 255), width=3)
 
-            self.blend(frame, np.array(edges), (self.W//4, self.H*3//4), 'alpha')
+        self.blend(frame, np.array(edges), (self.W//4, self.H*3//4), 'alpha')
 
-            x = int(type(self.player) is hm_players.GraphNextPlayer)
-            self.blend(frame, self.charLight,
-                       (left + space * (index + x), self.H//2), 'add')
+        x = int(type(self.player) is hm_players.GraphNextPlayer)
+        self.blend(frame, self.charLight,
+                   (left + space * (index + x), self.H//2), 'add')
 
     def circleCoords(self, i: float, r: float,
                      offx: int, offy: int) -> tuple[int, int]:
@@ -709,9 +727,9 @@ class Project(Frame):
             ))
 
         self.texts.append(self.d.create_text(
-            self.W*2//5 - 35, self.H*2//3,
+            self.W*2//5 - 30, self.H*2//3 - 20,
             text=self.guessText,
-            fill='#fff', font=('Times', 14), anchor=W
+            fill='#fff', font=('Times', 14), anchor=N + W
             ))
 
         self.canvasItems = self.texts
