@@ -148,7 +148,7 @@ class Project(Frame):
             ]
 
         self.selectedButton = None
-        self.can_guess_word = True
+        self.can_guess_word = hm_players.ENCHANT_AVAILABLE
         self.num_processes = 1
 
         self.button3 = np.array(Image.open('Assets/Button3.png').resize((144, 48)),
@@ -363,7 +363,8 @@ class Project(Frame):
 
     def toggleWordGuess(self) -> None:
         """Toggles whether AI can guess entire words"""
-        self.can_guess_word = not self.can_guess_word
+        if hm_players.ENCHANT_AVAILABLE:
+            self.can_guess_word = not self.can_guess_word
 
     def startGame(self) -> None:
         """Initializes a Hangman game"""

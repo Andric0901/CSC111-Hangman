@@ -10,7 +10,27 @@ Brief explanation to each AI player:
 from __future__ import annotations
 import random
 from typing import Optional, Any
-import enchant
+
+# OSX needs homebrew for enchant, so don't assume it's installed
+# v--- This bit of code should not be evaluated for style or substance ---v
+try:
+    import enchant
+    ENCHANT_AVAILABLE = True
+except:
+    print('enchant is not installed! Therefore, word-guessing is disabled.')
+    ENCHANT_AVAILABLE = False
+
+    # Replace enchant with dummy LOL this is why Apple is bad >:(
+    class dummyDict:
+        def suggest(self, word: str) -> set:
+            return set()
+    class enchant:
+        def Dict(dummy: str) -> None:
+            return dummyDict()
+# ^--- This bit of code should not be evaluated for style or substance ---^
+
+#  $$$$  Here is where the real code begins.  $$$$
+
 
 from hm_game_graph import GameGraph
 import hangman
