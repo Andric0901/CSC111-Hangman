@@ -1,0 +1,7 @@
+numpy
+pillow
+python-ta
+
+# IF using MacOS this is OPTIONAL; requires
+#   homebrew installation of enchant
+pyenchant
